@@ -10,6 +10,7 @@ pub struct HttpRequest {
     pub method: String,
     pub url: String,
     pub headers: Vec<(String, String)>,
+    pub body: Option<String>,
 }
 
 pub fn build(
@@ -49,5 +50,6 @@ pub fn build(
         method: operation.method.clone(),
         url,
         headers,
+        body: None,
     }
 }

@@ -49,6 +49,9 @@ impl HttpClient for ReqwestClient {
         for (name, value) in request.headers {
             builder = builder.header(name, value);
         }
+        if let Some(body) = request.body {
+            builder = builder.body(body);
+        }
 
         let response = builder
             .send()

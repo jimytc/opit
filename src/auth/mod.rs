@@ -2,6 +2,8 @@ use base64::Engine;
 
 use crate::request::HttpRequest;
 
+pub mod oauth2;
+
 pub enum Credential {
     ApiKey {
         location: String,
