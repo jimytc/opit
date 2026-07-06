@@ -6,6 +6,7 @@ fn fresh_request() -> HttpRequest {
         method: "GET".to_string(),
         url: "https://api.example.com/pets".to_string(),
         headers: vec![],
+        body: None,
     }
 }
 

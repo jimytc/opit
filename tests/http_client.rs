@@ -35,6 +35,7 @@ async fn fake_http_client_returns_success_response() {
         method: "GET".to_string(),
         url: "https://api.example.com/pets".to_string(),
         headers: vec![],
+        body: None,
     };
 
     let response = fake_client.send(request).await.expect("request should succeed");
@@ -50,6 +51,7 @@ async fn fake_http_client_records_request_url() {
         method: "GET".to_string(),
         url: "https://api.example.com/pets".to_string(),
         headers: vec![],
+        body: None,
     };
 
     fake_client.send(request).await.expect("request should succeed");
