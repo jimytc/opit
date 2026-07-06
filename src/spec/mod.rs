@@ -46,6 +46,10 @@ impl Spec {
         }
     }
 
+    pub fn base_url(&self) -> Option<String> {
+        self.inner.servers.first().map(|server| server.url.clone())
+    }
+
     pub fn security_schemes(&self) -> Vec<SecurityScheme> {
         match &self.inner.components {
             Some(components) => security::security_schemes_from(components),
