@@ -52,11 +52,22 @@ impl Spec {
                 Some(item) => item,
                 None => continue,
             };
-            if item.get.is_some() {
-                operations.push(Operation {
-                    path: path.clone(),
-                    method: "GET".to_string(),
-                });
+            let methods: [(&str, &Option<openapiv3::Operation>); 7] = [
+                ("GET", &item.get),
+                ("POST", &item.post),
+                ("PUT", &item.put),
+                ("DELETE", &item.delete),
+                ("PATCH", &item.patch),
+                ("HEAD", &item.head),
+                ("OPTIONS", &item.options),
+            ];
+            for (method, operation) in methods {
+                if operation.is_some() {
+                    operations.push(Operation {
+                        path: path.clone(),
+                        method: method.to_string(),
+                    });
+                }
             }
         }
         operations
