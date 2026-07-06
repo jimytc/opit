@@ -1,5 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 
+use crate::request::HttpResponse;
+
 const PANE_CYCLE: [Pane; 4] = [
     Pane::EndpointList,
     Pane::RequestBuilder,
@@ -19,6 +21,7 @@ pub struct AppState {
     pub focused: Pane,
     pub selected_operation_index: usize,
     operation_count: usize,
+    last_response: Option<HttpResponse>,
 }
 
 impl AppState {
@@ -27,11 +30,20 @@ impl AppState {
             focused: Pane::EndpointList,
             selected_operation_index: 0,
             operation_count: 0,
+            last_response: None,
         }
     }
 
     pub fn set_operation_count(&mut self, count: usize) {
         self.operation_count = count;
+    }
+
+    pub fn set_response(&mut self, response: HttpResponse) {
+        self.last_response = Some(response);
+    }
+
+    pub fn response(&self) -> Option<&HttpResponse> {
+        self.last_response.as_ref()
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) {
