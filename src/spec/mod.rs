@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -6,6 +8,10 @@ pub enum SpecError {
     Json(#[from] serde_json::Error),
     #[error("failed to parse OpenAPI YAML: {0}")]
     Yaml(#[from] serde_yaml::Error),
+    #[error("failed to read spec file: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("unrecognized spec file extension: {0}")]
+    UnknownExtension(String),
 }
 
 pub struct Operation {
@@ -26,6 +32,17 @@ impl Spec {
     pub fn from_yaml_str(yaml: &str) -> Result<Self, SpecError> {
         let inner: openapiv3::OpenAPI = serde_yaml::from_str(yaml)?;
         Ok(Self { inner })
+    }
+
+    pub fn load_from_path(path: &Path) -> Result<Self, SpecError> {
+        let contents = std::fs::read_to_string(path)?;
+        match path.extension().and_then(|ext| ext.to_str()) {
+            Some("json") => Self::from_json_str(&contents),
+            Some("yaml") | Some("yml") => Self::from_yaml_str(&contents),
+            other => Err(SpecError::UnknownExtension(
+                other.unwrap_or("").to_string(),
+            )),
+        }
     }
 
     pub fn operations(&self) -> Vec<Operation> {
