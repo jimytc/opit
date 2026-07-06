@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use crate::spec::Operation;
 
+mod http_client;
+
+pub use http_client::{HttpClient, HttpError, HttpResponse, ReqwestClient};
+
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
