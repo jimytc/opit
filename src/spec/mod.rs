@@ -4,6 +4,8 @@ use thiserror::Error;
 pub enum SpecError {
     #[error("failed to parse OpenAPI JSON: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("failed to parse OpenAPI YAML: {0}")]
+    Yaml(#[from] serde_yaml::Error),
 }
 
 pub struct Operation {
@@ -18,6 +20,11 @@ pub struct Spec {
 impl Spec {
     pub fn from_json_str(json: &str) -> Result<Self, SpecError> {
         let inner: openapiv3::OpenAPI = serde_json::from_str(json)?;
+        Ok(Self { inner })
+    }
+
+    pub fn from_yaml_str(yaml: &str) -> Result<Self, SpecError> {
+        let inner: openapiv3::OpenAPI = serde_yaml::from_str(yaml)?;
         Ok(Self { inner })
     }
 
