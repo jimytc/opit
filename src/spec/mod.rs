@@ -1,6 +1,12 @@
+mod operation;
+mod security;
+
 use std::path::Path;
 
 use thiserror::Error;
+
+pub use operation::{Operation, Parameter};
+pub use security::{SecurityScheme, SecuritySchemeKind};
 
 #[derive(Debug, Error)]
 pub enum SpecError {
@@ -14,63 +20,8 @@ pub enum SpecError {
     UnknownExtension(String),
 }
 
-pub struct Operation {
-    pub path: String,
-    pub method: String,
-    pub parameters: Vec<Parameter>,
-    pub has_request_body: bool,
-}
-
-pub struct Parameter {
-    pub name: String,
-    pub location: String,
-    pub required: bool,
-}
-
-fn api_key_location_str(location: &openapiv3::APIKeyLocation) -> &'static str {
-    match location {
-        openapiv3::APIKeyLocation::Query => "query",
-        openapiv3::APIKeyLocation::Header => "header",
-        openapiv3::APIKeyLocation::Cookie => "cookie",
-    }
-}
-
-fn parameters_from(operation: &openapiv3::Operation) -> Vec<Parameter> {
-    operation
-        .parameters
-        .iter()
-        .filter_map(|reference| reference.as_item())
-        .map(|parameter| {
-            let data = parameter.parameter_data_ref();
-            let location = match parameter {
-                openapiv3::Parameter::Query { .. } => "query",
-                openapiv3::Parameter::Header { .. } => "header",
-                openapiv3::Parameter::Path { .. } => "path",
-                openapiv3::Parameter::Cookie { .. } => "cookie",
-            };
-            Parameter {
-                name: data.name.clone(),
-                location: location.to_string(),
-                required: data.required,
-            }
-        })
-        .collect()
-}
-
 pub struct Spec {
     inner: openapiv3::OpenAPI,
-}
-
-pub struct SecurityScheme {
-    pub name: String,
-    pub kind: SecuritySchemeKind,
-}
-
-pub enum SecuritySchemeKind {
-    ApiKey { location: String, param_name: String },
-    Http { scheme: String },
-    OAuth2,
-    OpenIdConnect,
 }
 
 impl Spec {
@@ -96,35 +47,10 @@ impl Spec {
     }
 
     pub fn security_schemes(&self) -> Vec<SecurityScheme> {
-        let Some(components) = &self.inner.components else {
-            return Vec::new();
-        };
-        components
-            .security_schemes
-            .iter()
-            .filter_map(|(name, reference)| {
-                let scheme = reference.as_item()?;
-                let kind = match scheme {
-                    openapiv3::SecurityScheme::APIKey {
-                        location, name, ..
-                    } => SecuritySchemeKind::ApiKey {
-                        location: api_key_location_str(location).to_string(),
-                        param_name: name.clone(),
-                    },
-                    openapiv3::SecurityScheme::HTTP { scheme, .. } => SecuritySchemeKind::Http {
-                        scheme: scheme.clone(),
-                    },
-                    openapiv3::SecurityScheme::OAuth2 { .. } => SecuritySchemeKind::OAuth2,
-                    openapiv3::SecurityScheme::OpenIDConnect { .. } => {
-                        SecuritySchemeKind::OpenIdConnect
-                    }
-                };
-                Some(SecurityScheme {
-                    name: name.clone(),
-                    kind,
-                })
-            })
-            .collect()
+        match &self.inner.components {
+            Some(components) => security::security_schemes_from(components),
+            None => Vec::new(),
+        }
     }
 
     pub fn operations(&self) -> Vec<Operation> {
@@ -148,7 +74,7 @@ impl Spec {
                     operations.push(Operation {
                         path: path.clone(),
                         method: method.to_string(),
-                        parameters: parameters_from(operation),
+                        parameters: operation::parameters_from(operation),
                         has_request_body: operation.request_body.is_some(),
                     });
                 }
