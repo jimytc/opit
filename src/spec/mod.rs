@@ -18,6 +18,7 @@ pub struct Operation {
     pub path: String,
     pub method: String,
     pub parameters: Vec<Parameter>,
+    pub has_request_body: bool,
 }
 
 pub struct Parameter {
@@ -96,6 +97,7 @@ impl Spec {
                         path: path.clone(),
                         method: method.to_string(),
                         parameters: parameters_from(operation),
+                        has_request_body: operation.request_body.is_some(),
                     });
                 }
             }
