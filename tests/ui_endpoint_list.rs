@@ -1,5 +1,10 @@
 use openapi_terminal_app::spec::Operation;
-use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::Modifier,
+    widgets::{ListState, StatefulWidget, Widget},
+};
 
 #[test]
 fn endpoint_list_renders_method_and_path_for_each_operation() {
@@ -37,8 +42,52 @@ fn endpoint_list_renders_method_and_path_for_each_operation() {
     );
 }
 
+#[test]
+fn endpoint_list_applies_reversed_highlight_style_to_selected_row_only() {
+    let operations = vec![
+        Operation {
+            path: "/pets".to_string(),
+            method: "GET".to_string(),
+            parameters: vec![],
+            has_request_body: false,
+        },
+        Operation {
+            path: "/pets".to_string(),
+            method: "POST".to_string(),
+            parameters: vec![],
+            has_request_body: false,
+        },
+    ];
+
+    let widget = openapi_terminal_app::ui::endpoint_list::widget(&operations);
+    let area = Rect::new(0, 0, 20, 4);
+    let mut buffer = Buffer::empty(area);
+    let mut list_state = ListState::default();
+    list_state.select(Some(0));
+
+    StatefulWidget::render(widget, area, &mut buffer, &mut list_state);
+
+    assert!(
+        row_has_reversed_modifier(&buffer, area, 0),
+        "expected selected row 0 to have REVERSED highlight style"
+    );
+    assert!(
+        !row_has_reversed_modifier(&buffer, area, 1),
+        "expected unselected row 1 to not have REVERSED highlight style"
+    );
+}
+
 fn row_text(buffer: &Buffer, area: Rect, row: u16) -> String {
     (area.left()..area.right())
         .map(|x| buffer[(x, row)].symbol())
         .collect()
+}
+
+fn row_has_reversed_modifier(buffer: &Buffer, area: Rect, row: u16) -> bool {
+    (area.left()..area.right()).any(|x| {
+        buffer[(x, row)]
+            .style()
+            .add_modifier
+            .contains(Modifier::REVERSED)
+    })
 }
