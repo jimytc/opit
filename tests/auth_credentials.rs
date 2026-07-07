@@ -76,3 +76,19 @@ fn applies_raw_credential() {
         vec![("X-Custom".to_string(), "whatever".to_string())]
     );
 }
+
+#[test]
+fn cloned_credential_applies_identically_to_original() {
+    let credential = Credential::Bearer {
+        token: "abc123".to_string(),
+    };
+    let cloned = credential.clone();
+
+    let mut request = fresh_request();
+    apply(&mut request, &cloned);
+
+    assert_eq!(
+        request.headers,
+        vec![("Authorization".to_string(), "Bearer abc123".to_string())]
+    );
+}
