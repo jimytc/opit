@@ -53,3 +53,26 @@ pub fn build(
         body: None,
     }
 }
+
+pub fn param_values_from_inputs(
+    operation: &Operation,
+    inputs: &HashMap<usize, String>,
+) -> HashMap<String, String> {
+    operation
+        .parameters
+        .iter()
+        .enumerate()
+        .filter_map(|(index, parameter)| {
+            inputs
+                .get(&index)
+                .map(|value| (parameter.name.clone(), value.clone()))
+        })
+        .collect()
+}
+
+pub fn body_from_inputs(operation: &Operation, inputs: &HashMap<usize, String>) -> Option<String> {
+    if !operation.has_request_body {
+        return None;
+    }
+    inputs.get(&operation.parameters.len()).cloned()
+}
