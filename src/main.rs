@@ -5,10 +5,11 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use openapi_terminal_app::app::{AppState, Pane};
+use openapi_terminal_app::auth::{self, Credential};
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
-use openapi_terminal_app::spec::{Operation, Spec};
-use openapi_terminal_app::ui::{endpoint_list, request_builder, response_viewer};
+use openapi_terminal_app::spec::{Operation, Spec, SecurityScheme};
+use openapi_terminal_app::ui::{auth_config, endpoint_list, request_builder, response_viewer};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, ListState};
@@ -18,12 +19,37 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let spec = Spec::load_from_path(&cli.spec_path)?;
     let operations = spec.operations();
+    let security_schemes = spec.security_schemes();
     let base_url = spec.base_url().unwrap_or_default();
+    let credentials = credentials_from_cli(&cli);
 
-    run_app(&operations, &base_url).await
+    run_app(&operations, &security_schemes, &base_url, &credentials).await
 }
 
-async fn run_app(operations: &[Operation], base_url: &str) -> anyhow::Result<()> {
+fn credentials_from_cli(cli: &Cli) -> Vec<Credential> {
+    let mut credentials = Vec::new();
+    if let Some(token) = &cli.bearer_token {
+        credentials.push(Credential::Bearer {
+            token: token.clone(),
+        });
+    }
+    for header in &cli.header {
+        if let Some((name, value)) = header.split_once('=') {
+            credentials.push(Credential::Raw {
+                header_name: name.to_string(),
+                header_value: value.to_string(),
+            });
+        }
+    }
+    credentials
+}
+
+async fn run_app(
+    operations: &[Operation],
+    security_schemes: &[SecurityScheme],
+    base_url: &str,
+    credentials: &[Credential],
+) -> anyhow::Result<()> {
     enable_raw_mode()?;
     std::io::stdout().execute(EnterAlternateScreen)?;
     let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
@@ -32,7 +58,16 @@ async fn run_app(operations: &[Operation], base_url: &str) -> anyhow::Result<()>
     app.set_operation_count(operations.len());
     let http_client = ReqwestClient::new();
 
-    let result = event_loop(&mut terminal, &mut app, operations, base_url, &http_client).await;
+    let result = event_loop(
+        &mut terminal,
+        &mut app,
+        operations,
+        security_schemes,
+        base_url,
+        credentials,
+        &http_client,
+    )
+    .await;
 
     disable_raw_mode()?;
     std::io::stdout().execute(LeaveAlternateScreen)?;
@@ -44,11 +79,13 @@ async fn event_loop<B: ratatui::backend::Backend>(
     terminal: &mut ratatui::Terminal<B>,
     app: &mut AppState,
     operations: &[Operation],
+    security_schemes: &[SecurityScheme],
     base_url: &str,
+    credentials: &[Credential],
     http_client: &dyn HttpClient,
 ) -> anyhow::Result<()> {
     loop {
-        terminal.draw(|frame| draw(frame, app, operations))?;
+        terminal.draw(|frame| draw(frame, app, operations, security_schemes))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -56,7 +93,10 @@ async fn event_loop<B: ratatui::backend::Backend>(
                     KeyCode::Char('q') | KeyCode::Esc => break,
                     KeyCode::Enter => {
                         if let Some(operation) = operations.get(app.selected_operation_index) {
-                            let request = request::build(base_url, operation, &HashMap::new());
+                            let mut request = request::build(base_url, operation, &HashMap::new());
+                            for credential in credentials {
+                                auth::apply(&mut request, credential);
+                            }
                             match http_client.send(request).await {
                                 Ok(response) => app.set_response(response),
                                 Err(error) => app.set_response(request::HttpResponse {
@@ -75,7 +115,12 @@ async fn event_loop<B: ratatui::backend::Backend>(
     Ok(())
 }
 
-fn draw(frame: &mut ratatui::Frame, app: &AppState, operations: &[Operation]) {
+fn draw(
+    frame: &mut ratatui::Frame,
+    app: &AppState,
+    operations: &[Operation],
+    security_schemes: &[SecurityScheme],
+) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -114,7 +159,10 @@ fn draw(frame: &mut ratatui::Frame, app: &AppState, operations: &[Operation]) {
     let auth_config_block = Block::bordered()
         .title("Auth Config")
         .border_style(pane_border_style(app.focused, Pane::AuthConfig));
-    frame.render_widget(auth_config_block, bottom[0]);
+    frame.render_widget(
+        auth_config::widget(security_schemes).block(auth_config_block),
+        bottom[0],
+    );
 
     let response_viewer_block = Block::bordered()
         .title("Response Viewer")
