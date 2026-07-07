@@ -1,0 +1,253 @@
+use std::collections::HashSet;
+
+use openapi_terminal_app::app::PaneEditor;
+
+#[test]
+fn new_editor_has_default_state() {
+    let editor = PaneEditor::new();
+
+    assert_eq!(editor.selected_row(), 0);
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn set_row_count_clamps_selected_row_when_count_shrinks() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(5);
+    editor.move_down();
+    editor.move_down();
+    editor.move_down();
+    editor.move_down();
+
+    editor.set_row_count(2);
+
+    assert_eq!(editor.selected_row(), 1);
+}
+
+#[test]
+fn set_row_count_with_same_count_preserves_in_progress_editing_buffer() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(3);
+    editor.start_editing();
+    editor.push_char('a');
+
+    editor.set_row_count(3);
+
+    assert_eq!(editor.editing_buffer(), Some("a"));
+}
+
+#[test]
+fn set_row_count_with_larger_count_preserves_committed_inputs() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(3);
+    editor.start_editing();
+    editor.push_char('a');
+    editor.commit();
+
+    editor.set_row_count(5);
+
+    assert_eq!(editor.inputs().get(&0).map(String::as_str), Some("a"));
+}
+
+#[test]
+fn move_up_is_bounded_at_first_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(3);
+
+    editor.move_up();
+
+    assert_eq!(editor.selected_row(), 0);
+}
+
+#[test]
+fn move_down_is_bounded_at_last_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(2);
+
+    editor.move_down();
+    editor.move_down();
+
+    assert_eq!(editor.selected_row(), 1);
+}
+
+#[test]
+fn move_up_and_down_are_no_ops_when_row_count_is_zero() {
+    let mut editor = PaneEditor::new();
+
+    editor.move_down();
+    editor.move_up();
+
+    assert_eq!(editor.selected_row(), 0);
+}
+
+#[test]
+fn moving_is_no_op_while_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(3);
+    editor.move_down();
+    editor.start_editing();
+
+    editor.move_down();
+    editor.move_up();
+
+    assert_eq!(editor.selected_row(), 1);
+    assert_eq!(editor.editing_buffer(), Some(""));
+}
+
+#[test]
+fn start_editing_prefills_from_existing_input() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    editor.push_char('x');
+    editor.commit();
+
+    editor.start_editing();
+
+    assert_eq!(editor.editing_buffer(), Some("x"));
+}
+
+#[test]
+fn start_editing_uses_empty_buffer_when_selected_row_has_no_input() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.start_editing();
+
+    assert_eq!(editor.editing_buffer(), Some(""));
+}
+
+#[test]
+fn start_editing_is_no_op_when_row_count_is_zero() {
+    let mut editor = PaneEditor::new();
+
+    editor.start_editing();
+
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn start_editing_is_no_op_when_selected_row_is_not_editable() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(2);
+    editor.move_down();
+    editor.set_non_editable_rows(HashSet::from([1]));
+
+    editor.start_editing();
+
+    assert_eq!(editor.selected_row(), 1);
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn push_char_is_no_op_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.push_char('x');
+
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn pop_char_is_no_op_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.pop_char();
+
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn pop_char_on_empty_editing_buffer_keeps_buffer_empty() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+
+    editor.pop_char();
+
+    assert_eq!(editor.editing_buffer(), Some(""));
+}
+
+#[test]
+fn commit_stores_buffer_at_selected_row_and_clears_editing_buffer() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(2);
+    editor.move_down();
+    editor.start_editing();
+    editor.push_char('o');
+    editor.push_char('k');
+
+    editor.commit();
+
+    assert_eq!(editor.inputs().get(&1).map(String::as_str), Some("ok"));
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn commit_is_no_op_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.commit();
+
+    assert!(editor.inputs().is_empty());
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn cancel_clears_buffer_without_replacing_prior_committed_input() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    for c in "first".chars() {
+        editor.push_char(c);
+    }
+    editor.commit();
+
+    editor.start_editing();
+    for c in "second".chars() {
+        editor.push_char(c);
+    }
+    editor.cancel();
+
+    assert_eq!(
+        editor.inputs().get(&0),
+        Some(&"first".to_string())
+    );
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn cancel_is_no_op_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.cancel();
+
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn reset_clears_inputs_editing_buffer_and_selected_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(3);
+    editor.move_down();
+    editor.start_editing();
+    editor.push_char('x');
+    editor.commit();
+    editor.move_down();
+    editor.start_editing();
+    editor.push_char('y');
+
+    editor.reset();
+
+    assert_eq!(editor.selected_row(), 0);
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
