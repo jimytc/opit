@@ -67,31 +67,43 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 
 ### Keybindings
 
-| Key             | Action                                                |
-|-----------------|--------------------------------------------------------|
-| `Tab`           | Cycle focus forward through panes                     |
-| `Shift+Tab`     | Cycle focus backward through panes                    |
-| `Up` / `Down`   | Move selection in the Endpoints pane                  |
-| `Enter`         | Send the selected operation as a live HTTP request    |
-| `q` / `Esc`     | Quit                                                    |
+| Key             | Action                                                                 |
+|-----------------|-------------------------------------------------------------------------|
+| `Tab`           | Cycle focus forward through panes (disabled while editing a field)     |
+| `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
+| `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config |
+| `Enter`         | In Endpoints: send the selected operation as a live HTTP request. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing |
+| `Esc`           | Cancel an in-progress edit (or quit, if not currently editing)          |
+| Any character / `Backspace` | While editing a row, types into / erases from that row's value  |
+| `q`             | Quit (only when not currently editing a field)                        |
 
 ### Panes
 
-- **Endpoints** — list of operations (`METHOD /path`) from the loaded spec
-- **Request Builder** — parameters (path/query/header) for the selected operation
-- **Auth Config** — security schemes declared in the spec's `components.securitySchemes`
+- **Endpoints** — list of operations (`METHOD /path`) from the loaded spec; the selected
+  row is highlighted
+- **Request Builder** — one row per parameter (path/query/header) for the selected
+  operation, plus a trailing "Body" row if the operation accepts a request body; select a
+  row and press `Enter` to type its value
+- **Auth Config** — one row per security scheme declared in the spec's
+  `components.securitySchemes`; select a row and press `Enter` to type its credential.
+  API Key and HTTP Bearer schemes take a single value; HTTP Basic takes `user:pass`
+  (hinted in the row text). OAuth2 and OpenID Connect schemes are shown but marked
+  "(not editable yet)" — see Known limitations
 - **Response Viewer** — status and body of the last request sent
 
 The base URL used for requests is the first entry in the spec's top-level `servers` array.
+Switching the selected operation in Endpoints clears any in-progress Request Builder
+values (they're per-operation); Auth Config values persist across operation switches
+(credentials are spec-wide). Credentials/params entered interactively are combined with
+any `--bearer-token`/`--header` CLI flags when sending.
 
 ## Known limitations
 
-- There's no interactive way yet to type parameter *values* into the Request Builder
-  pane — requests go out with empty params, so an endpoint requiring a path parameter
-  (e.g. `/pets/{petId}`) will hit the literal `{petId}` in the URL.
 - OAuth2 client_credentials auth is implemented and unit-tested (`auth::oauth2::TokenCache`)
-  but not yet wired into the live-send path — only `--bearer-token` and `--header` are
-  currently applied to outgoing requests.
+  but not yet wired into the live-send path, and isn't interactively configurable in the
+  Auth Config pane — only API Key, HTTP Bearer, and HTTP Basic credentials (entered
+  interactively or via `--bearer-token`/`--header`) are currently applied to outgoing
+  requests.
 
 ## Development
 
