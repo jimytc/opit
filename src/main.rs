@@ -165,7 +165,12 @@ fn draw(
         .title("Auth Config")
         .border_style(pane_border_style(app.focused, Pane::AuthConfig));
     frame.render_widget(
-        auth_config::widget(security_schemes).block(auth_config_block),
+        auth_config::widget(
+            security_schemes,
+            app.auth_config.selected_row(),
+            app.auth_config.editing_buffer(),
+        )
+        .block(auth_config_block),
         bottom[0],
     );
 
