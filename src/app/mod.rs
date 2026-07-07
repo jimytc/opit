@@ -24,6 +24,8 @@ pub enum Pane {
 pub struct AppState {
     pub focused: Pane,
     pub selected_operation_index: usize,
+    pub request_builder: PaneEditor,
+    pub auth_config: PaneEditor,
     operation_count: usize,
     last_response: Option<HttpResponse>,
 }
@@ -33,6 +35,8 @@ impl AppState {
         Self {
             focused: Pane::EndpointList,
             selected_operation_index: 0,
+            request_builder: PaneEditor::new(),
+            auth_config: PaneEditor::new(),
             operation_count: 0,
             last_response: None,
         }
@@ -50,18 +54,59 @@ impl AppState {
         self.last_response.as_ref()
     }
 
+    pub fn is_editing(&self) -> bool {
+        match self.focused {
+            Pane::RequestBuilder => self.request_builder.editing_buffer().is_some(),
+            Pane::AuthConfig => self.auth_config.editing_buffer().is_some(),
+            Pane::EndpointList | Pane::ResponseViewer => false,
+        }
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Tab | KeyCode::BackTab => self.cycle_focus(key.code),
-            KeyCode::Down if self.focused == Pane::EndpointList => {
+            KeyCode::Tab | KeyCode::BackTab if !self.is_editing() => self.cycle_focus(key.code),
+            _ => match self.focused {
+                Pane::EndpointList => self.handle_endpoint_list_key(key.code),
+                Pane::RequestBuilder => Self::handle_editor_key(&mut self.request_builder, key.code),
+                Pane::AuthConfig => Self::handle_editor_key(&mut self.auth_config, key.code),
+                Pane::ResponseViewer => {}
+            },
+        }
+    }
+
+    fn handle_endpoint_list_key(&mut self, code: KeyCode) {
+        let before = self.selected_operation_index;
+        match code {
+            KeyCode::Down => {
                 let max_index = self.operation_count.saturating_sub(1);
                 if self.selected_operation_index < max_index {
                     self.selected_operation_index += 1;
                 }
             }
-            KeyCode::Up if self.focused == Pane::EndpointList => {
+            KeyCode::Up => {
                 self.selected_operation_index = self.selected_operation_index.saturating_sub(1);
             }
+            _ => {}
+        }
+        if self.selected_operation_index != before {
+            self.request_builder.reset();
+        }
+    }
+
+    fn handle_editor_key(editor: &mut PaneEditor, code: KeyCode) {
+        match code {
+            KeyCode::Up => editor.move_up(),
+            KeyCode::Down => editor.move_down(),
+            KeyCode::Enter => {
+                if editor.editing_buffer().is_some() {
+                    editor.commit();
+                } else {
+                    editor.start_editing();
+                }
+            }
+            KeyCode::Esc => editor.cancel(),
+            KeyCode::Backspace => editor.pop_char(),
+            KeyCode::Char(c) => editor.push_char(c),
             _ => {}
         }
     }
