@@ -2,6 +2,10 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::request::HttpResponse;
 
+mod pane_editor;
+
+pub use pane_editor::PaneEditor;
+
 const PANE_CYCLE: [Pane; 4] = [
     Pane::EndpointList,
     Pane::RequestBuilder,
