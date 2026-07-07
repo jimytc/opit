@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use clap::Parser;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -8,7 +8,7 @@ use openapi_terminal_app::app::{AppState, Pane};
 use openapi_terminal_app::auth::{self, Credential};
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
-use openapi_terminal_app::spec::{Operation, Spec, SecurityScheme};
+use openapi_terminal_app::spec::{Operation, SecurityScheme, SecuritySchemeKind, Spec};
 use openapi_terminal_app::ui::{auth_config, endpoint_list, request_builder, response_viewer};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
@@ -81,38 +81,86 @@ async fn event_loop<B: ratatui::backend::Backend>(
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
     base_url: &str,
-    credentials: &[Credential],
+    cli_credentials: &[Credential],
     http_client: &dyn HttpClient,
 ) -> anyhow::Result<()> {
     loop {
+        let selected_operation = operations.get(app.selected_operation_index);
+        let request_builder_row_count = selected_operation
+            .map(|operation| operation.parameters.len() + usize::from(operation.has_request_body))
+            .unwrap_or(0);
+        app.request_builder.set_row_count(request_builder_row_count);
+        app.auth_config.set_row_count(security_schemes.len());
+        app.auth_config
+            .set_non_editable_rows(non_editable_auth_rows(security_schemes));
+
         terminal.draw(|frame| draw(frame, app, operations, security_schemes))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Enter => {
-                        if let Some(operation) = operations.get(app.selected_operation_index) {
-                            let mut request = request::build(base_url, operation, &HashMap::new());
-                            for credential in credentials {
-                                auth::apply(&mut request, credential);
-                            }
-                            match http_client.send(request).await {
-                                Ok(response) => app.set_response(response),
-                                Err(error) => app.set_response(request::HttpResponse {
-                                    status: 0,
-                                    headers: vec![],
-                                    body: format!("{error:?}"),
-                                }),
+                if app.is_editing() {
+                    match key.code {
+                        KeyCode::Enter | KeyCode::Esc | KeyCode::Backspace | KeyCode::Char(_) => {
+                            app.handle_key(key)
+                        }
+                        _ => {}
+                    }
+                } else {
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc => break,
+                        KeyCode::Enter if app.focused == Pane::EndpointList => {
+                            if let Some(operation) = selected_operation {
+                                let param_inputs = request::param_values_from_inputs(
+                                    operation,
+                                    app.request_builder.inputs(),
+                                );
+                                let mut request = request::build(base_url, operation, &param_inputs);
+                                if let Some(body) =
+                                    request::body_from_inputs(operation, app.request_builder.inputs())
+                                {
+                                    request.body = Some(body);
+                                }
+
+                                let mut credentials = cli_credentials.to_vec();
+                                credentials.extend(auth::credentials_from_inputs(
+                                    security_schemes,
+                                    app.auth_config.inputs(),
+                                ));
+                                for credential in &credentials {
+                                    auth::apply(&mut request, credential);
+                                }
+
+                                match http_client.send(request).await {
+                                    Ok(response) => app.set_response(response),
+                                    Err(error) => app.set_response(request::HttpResponse {
+                                        status: 0,
+                                        headers: vec![],
+                                        body: format!("{error:?}"),
+                                    }),
+                                }
                             }
                         }
+                        _ => app.handle_key(key),
                     }
-                    _ => app.handle_key(key),
                 }
             }
         }
     }
     Ok(())
+}
+
+fn non_editable_auth_rows(security_schemes: &[SecurityScheme]) -> HashSet<usize> {
+    security_schemes
+        .iter()
+        .enumerate()
+        .filter_map(|(index, scheme)| {
+            matches!(
+                scheme.kind,
+                SecuritySchemeKind::OAuth2 | SecuritySchemeKind::OpenIdConnect
+            )
+            .then_some(index)
+        })
+        .collect()
 }
 
 fn draw(
