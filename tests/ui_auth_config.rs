@@ -190,7 +190,7 @@ fn auth_config_renders_open_id_connect_as_not_editable_yet() {
     }];
 
     let widget = openapi_terminal_app::ui::auth_config::widget(&schemes, 0, None);
-    let area = Rect::new(0, 0, 40, 5);
+    let area = Rect::new(0, 0, 50, 5);
     let mut buffer = Buffer::empty(area);
 
     Widget::render(widget, area, &mut buffer);
