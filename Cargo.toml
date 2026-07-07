@@ -1,5 +1,5 @@
 [package]
-name = "openapi_terminal_app"
+name = "opit"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ name = "openapi_terminal_app"
 path = "src/lib.rs"
 
 [[bin]]
-name = "openapi-terminal-app"
+name = "opit"
 path = "src/main.rs"
 
 [dependencies]
