@@ -3,29 +3,53 @@
 A terminal UI for viewing and playing with OpenAPI documents: browse operations across
 multiple keyboard-navigable panes, and send live HTTP requests with auth support.
 
-## Prerequisites
+## Install
 
-- Rust toolchain (`cargo`, `rustc`) — install via [rustup](https://rustup.rs) if you don't have one.
+### macOS — Homebrew (recommended)
 
-## Build
+```bash
+brew install jimytc/opit/opit
+```
+
+### macOS — DMG
+
+Download the `.dmg` from the [latest release](https://github.com/jimytc/opit/releases/latest),
+open it, and copy `opit` from the mounted volume into a directory on your `PATH` (e.g.
+`/usr/local/bin` or `~/.local/bin`). Apple Silicon (arm64) only.
+
+### Linux — prebuilt tarball
+
+Download the tarball for your architecture from the
+[latest release](https://github.com/jimytc/opit/releases/latest)
+(`opit-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` or `-aarch64-unknown-linux-gnu.tar.gz`),
+extract it, and move the `opit` binary into a directory on your `PATH`:
+
+```bash
+tar -xzf opit-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
+sudo mv opit-vX.Y.Z-x86_64-unknown-linux-gnu/opit /usr/local/bin/
+```
+
+**Glibc note**: these binaries need a fairly recent glibc (2.39+, i.e. Ubuntu 24.04+/Debian
+13+) — see the [cross-compiling section](#cross-compiling-for-linux) below for details.
+
+### Build from source
+
+Requires the Rust toolchain (`cargo`, `rustc`) — install via [rustup](https://rustup.rs)
+if you don't have one.
 
 ```bash
 cargo build --release
 ```
 
-The binary lands at `target/release/opit`.
-
-## Install (local)
-
-To have `opit` available as a regular command from any directory:
+The binary lands at `target/release/opit`. To install it as a regular command on `PATH`:
 
 ```bash
 cargo install --path .
 ```
 
-This builds and copies the binary into `~/.cargo/bin/opit`, which is on `PATH` if you
-installed Rust via rustup. To update after making changes, rerun the same command. To
-remove it: `cargo uninstall opit`.
+This copies the binary into `~/.cargo/bin/opit`, which is on `PATH` if you installed Rust
+via rustup. To update after making changes, rerun the same command. To remove it:
+`cargo uninstall opit`.
 
 ## Usage
 
@@ -102,3 +126,14 @@ they will fail with a `GLIBC_x.xx not found` error on older distros (e.g. Ubuntu
 Debian 12). If you need binaries that run on any Linux regardless of glibc version
 (older servers, Alpine, minimal containers), build the musl targets instead
 (`x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl`) for fully static binaries.
+
+## Releasing
+
+Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds and
+publishes a GitHub Release with:
+- `opit-vX.Y.Z-aarch64-apple-darwin.tar.gz` and `.dmg` (macOS)
+- `opit-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` and `opit-vX.Y.Z-aarch64-unknown-linux-gnu.tar.gz` (Linux)
+
+After a release, update the Homebrew tap
+([jimytc/homebrew-opit](https://github.com/jimytc/homebrew-opit)) — see that repo's
+README for the steps (bump `url`/`sha256`/`version` in `Formula/opit.rb`).
