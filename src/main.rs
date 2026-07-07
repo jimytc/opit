@@ -152,7 +152,12 @@ fn draw(
         .title("Request Builder")
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
     frame.render_widget(
-        request_builder::widget(selected_operation).block(request_builder_block),
+        request_builder::widget(
+            selected_operation,
+            app.request_builder.selected_row(),
+            app.request_builder.editing_buffer(),
+        )
+        .block(request_builder_block),
         top[1],
     );
 
