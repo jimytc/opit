@@ -37,6 +37,9 @@ pub fn build(
             "header" => {
                 headers.push((parameter.name.clone(), value.clone()));
             }
+            "cookie" => {
+                append_cookie_header(&mut headers, &parameter.name, value);
+            }
             _ => {}
         }
     }
