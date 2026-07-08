@@ -22,9 +22,19 @@ async fn main() -> anyhow::Result<()> {
     let operations = spec.operations();
     let security_schemes = spec.security_schemes();
     let servers = spec.servers();
+    let title = spec.title();
+    let version = spec.version();
     let credentials = credentials_from_cli(&cli);
 
-    run_app(&operations, &security_schemes, &servers, &credentials).await
+    run_app(
+        &operations,
+        &security_schemes,
+        &servers,
+        &title,
+        &version,
+        &credentials,
+    )
+    .await
 }
 
 fn credentials_from_cli(cli: &Cli) -> Vec<Credential> {
@@ -49,6 +59,8 @@ async fn run_app(
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
     servers: &[String],
+    title: &str,
+    version: &str,
     credentials: &[Credential],
 ) -> anyhow::Result<()> {
     enable_raw_mode()?;
@@ -67,6 +79,8 @@ async fn run_app(
         operations,
         security_schemes,
         servers,
+        title,
+        version,
         credentials,
         &http_client,
         &token_caches,
@@ -85,6 +99,8 @@ async fn event_loop<B: ratatui::backend::Backend>(
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
     servers: &[String],
+    title: &str,
+    version: &str,
     cli_credentials: &[Credential],
     http_client: &dyn HttpClient,
     token_caches: &std::collections::HashMap<usize, openapi_terminal_app::auth::oauth2::TokenCache>,
@@ -110,7 +126,19 @@ async fn event_loop<B: ratatui::backend::Backend>(
             .map(String::as_str)
             .unwrap_or_default();
 
-        terminal.draw(|frame| draw(frame, app, &filtered, security_schemes, base_url, servers, cli_credentials))?;
+        terminal.draw(|frame| {
+            draw(
+                frame,
+                app,
+                &filtered,
+                security_schemes,
+                base_url,
+                servers,
+                title,
+                version,
+                cli_credentials,
+            )
+        })?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -214,36 +242,35 @@ fn draw(
     security_schemes: &[SecurityScheme],
     base_url: &str,
     servers: &[String],
+    title: &str,
+    version: &str,
     cli_credentials: &[Credential],
 ) {
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(frame.area());
-    let top = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(rows[0]);
-    let bottom = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(rows[1]);
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(25),
+            Constraint::Percentage(30),
+            Constraint::Percentage(20),
+            Constraint::Percentage(25),
+        ])
+        .split(columns[1]);
 
-    let endpoint_title = match (servers.len() > 1, app.endpoint_filter.is_empty()) {
-        (true, true) => format!(
-            "Endpoints — server {}/{} (press 's')",
+    let mut endpoint_title = format!("Endpoints — {title} v{version}");
+    if servers.len() > 1 {
+        endpoint_title.push_str(&format!(
+            " — server {}/{} (press 's')",
             app.selected_server_index + 1,
             servers.len()
-        ),
-        (true, false) => format!(
-            "Endpoints — server {}/{} (press 's') — filter: {}",
-            app.selected_server_index + 1,
-            servers.len(),
-            app.endpoint_filter
-        ),
-        (false, true) => "Endpoints".to_string(),
-        (false, false) => format!("Endpoints — filter: {}", app.endpoint_filter),
-    };
+        ));
+    }
+    if !app.endpoint_filter.is_empty() {
+        endpoint_title.push_str(&format!(" — filter: {}", app.endpoint_filter));
+    }
     let endpoint_block = Block::bordered()
         .title(endpoint_title)
         .border_style(pane_border_style(app.focused, Pane::EndpointList));
@@ -255,21 +282,28 @@ fn draw(
     }
     frame.render_stateful_widget(
         endpoint_list_widget.block(endpoint_block),
-        top[0],
+        columns[0],
         &mut list_state,
     );
 
     let selected_operation = filtered.get(app.selected_operation_index).copied();
+
+    let auth_config_block = Block::bordered()
+        .title("Auth Config")
+        .border_style(pane_border_style(app.focused, Pane::AuthConfig));
+    frame.render_widget(
+        auth_config::widget(
+            security_schemes,
+            app.auth_config.selected_row(),
+            app.auth_config.editing_buffer(),
+        )
+        .block(auth_config_block),
+        right[0],
+    );
+
     let request_builder_block = Block::bordered()
         .title("Request Builder")
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
-    let request_builder_inner = request_builder_block.inner(top[1]);
-    frame.render_widget(request_builder_block, top[1]);
-
-    let request_builder_sections = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(3), Constraint::Percentage(40)])
-        .split(request_builder_inner);
     let body_committed = selected_operation
         .map(|operation| {
             app.request_builder
@@ -283,10 +317,16 @@ fn draw(
             app.request_builder.selected_row(),
             app.request_builder.editing_buffer(),
             body_committed,
-        ),
-        request_builder_sections[0],
+        )
+        .block(request_builder_block),
+        right[1],
     );
 
+    let curl_preview_block = Block::bordered()
+        .title("Curl Preview")
+        .border_style(pane_border_style(app.focused, Pane::CurlPreview));
+    let curl_preview_inner = curl_preview_block.inner(right[2]);
+    frame.render_widget(curl_preview_block, right[2]);
     if let Some(operation) = selected_operation {
         let preview_request = request::build_preview(
             base_url,
@@ -299,29 +339,16 @@ fn draw(
         let curl_text = request::to_curl(&preview_request);
         frame.render_widget(
             Paragraph::new(curl_text).wrap(Wrap { trim: false }),
-            request_builder_sections[1],
+            curl_preview_inner,
         );
     }
-
-    let auth_config_block = Block::bordered()
-        .title("Auth Config")
-        .border_style(pane_border_style(app.focused, Pane::AuthConfig));
-    frame.render_widget(
-        auth_config::widget(
-            security_schemes,
-            app.auth_config.selected_row(),
-            app.auth_config.editing_buffer(),
-        )
-        .block(auth_config_block),
-        bottom[0],
-    );
 
     let response_viewer_block = Block::bordered()
         .title("Response Viewer")
         .border_style(pane_border_style(app.focused, Pane::ResponseViewer));
     frame.render_widget(
         response_viewer::widget(app.response()).block(response_viewer_block),
-        bottom[1],
+        right[3],
     );
 }
 
