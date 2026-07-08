@@ -42,6 +42,14 @@ impl PaneEditor {
         &self.inputs
     }
 
+    pub fn inputs_with_live_edit(&self) -> HashMap<usize, String> {
+        let mut inputs = self.inputs.clone();
+        if let Some(buffer) = &self.editing {
+            inputs.insert(self.selected_row, buffer.clone());
+        }
+        inputs
+    }
+
     pub fn move_up(&mut self) {
         if self.row_count == 0 || self.editing.is_some() {
             return;
