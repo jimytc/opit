@@ -87,6 +87,21 @@ pub fn param_values_from_inputs(
         .collect()
 }
 
+pub fn missing_required_params(
+    operation: &Operation,
+    inputs: &HashMap<usize, String>,
+) -> Vec<String> {
+    operation
+        .parameters
+        .iter()
+        .enumerate()
+        .filter(|(index, parameter)| {
+            parameter.required && inputs.get(index).map(String::as_str).unwrap_or("").is_empty()
+        })
+        .map(|(_, parameter)| parameter.name.clone())
+        .collect()
+}
+
 pub fn body_from_inputs(operation: &Operation, inputs: &HashMap<usize, String>) -> Option<String> {
     if !operation.has_request_body {
         return None;

@@ -119,6 +119,21 @@ async fn event_loop<B: ratatui::backend::Backend>(
                         KeyCode::Char('q') | KeyCode::Esc => break,
                         KeyCode::Enter if app.focused == Pane::EndpointList => {
                             if let Some(operation) = selected_operation {
+                                let missing = request::missing_required_params(
+                                    operation,
+                                    app.request_builder.inputs(),
+                                );
+                                if !missing.is_empty() {
+                                    app.set_response(request::HttpResponse {
+                                        status: 0,
+                                        headers: vec![],
+                                        body: format!(
+                                            "Missing required parameter(s): {}",
+                                            missing.join(", ")
+                                        ),
+                                    });
+                                    continue;
+                                }
                                 let mut request = request::build_preview(
                                     base_url,
                                     operation,
