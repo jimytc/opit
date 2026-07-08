@@ -76,3 +76,10 @@ pub fn body_from_inputs(operation: &Operation, inputs: &HashMap<usize, String>) 
     }
     inputs.get(&operation.parameters.len()).cloned()
 }
+
+pub fn pretty_print_if_json(body: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(body) {
+        Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_else(|_| body.to_string()),
+        Err(_) => body.to_string(),
+    }
+}
