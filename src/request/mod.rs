@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::spec::Operation;
+use crate::auth::{self, Credential};
+use crate::spec::{Operation, SecurityScheme};
 
 mod http_client;
 
@@ -82,6 +83,29 @@ pub fn pretty_print_if_json(body: &str) -> String {
         Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_else(|_| body.to_string()),
         Err(_) => body.to_string(),
     }
+}
+
+pub fn build_preview(
+    base_url: &str,
+    operation: &Operation,
+    param_inputs: &HashMap<usize, String>,
+    security_schemes: &[SecurityScheme],
+    auth_inputs: &HashMap<usize, String>,
+    cli_credentials: &[Credential],
+) -> HttpRequest {
+    let param_values = param_values_from_inputs(operation, param_inputs);
+    let mut request = build(base_url, operation, &param_values);
+    if let Some(body) = body_from_inputs(operation, param_inputs) {
+        request.body = Some(body);
+    }
+
+    let mut credentials = cli_credentials.to_vec();
+    credentials.extend(auth::credentials_from_inputs(security_schemes, auth_inputs));
+    for credential in &credentials {
+        auth::apply(&mut request, credential);
+    }
+
+    request
 }
 
 /// Known limitation: header/body values containing a single quote are not
