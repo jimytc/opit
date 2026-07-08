@@ -1,11 +1,17 @@
 use std::collections::HashSet;
 
 use clap::Parser;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::event::{
+    self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEventKind,
+};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use crossterm::ExecutableCommand;
 use openapi_terminal_app::app::{AppState, Pane};
-use openapi_terminal_app::auth::oauth2::{build_token_caches, resolve_oauth2_credentials, SystemClock};
+use openapi_terminal_app::auth::oauth2::{
+    build_token_caches, resolve_oauth2_credentials, SystemClock,
+};
 use openapi_terminal_app::auth::Credential;
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
@@ -64,8 +70,11 @@ async fn run_app(
     credentials: &[Credential],
 ) -> anyhow::Result<()> {
     enable_raw_mode()?;
-    std::io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
+    std::io::stdout()
+        .execute(EnterAlternateScreen)?
+        .execute(EnableBracketedPaste)?;
+    let mut terminal =
+        ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
 
     let mut app = AppState::new();
     app.set_operation_count(operations.len());
@@ -88,7 +97,9 @@ async fn run_app(
     .await;
 
     disable_raw_mode()?;
-    std::io::stdout().execute(LeaveAlternateScreen)?;
+    std::io::stdout()
+        .execute(DisableBracketedPaste)?
+        .execute(LeaveAlternateScreen)?;
 
     result
 }
@@ -118,6 +129,12 @@ async fn event_loop<B: ratatui::backend::Backend>(
             .map(|operation| operation.parameters.len() + usize::from(operation.has_request_body))
             .unwrap_or(0);
         app.request_builder.set_row_count(request_builder_row_count);
+        app.request_builder.set_multiline_rows(
+            selected_operation
+                .filter(|operation| operation.has_request_body)
+                .map(|operation| HashSet::from([operation.parameters.len()]))
+                .unwrap_or_default(),
+        );
         app.auth_config.set_row_count(security_schemes.len());
         app.auth_config
             .set_non_editable_rows(non_editable_auth_rows(security_schemes));
@@ -140,82 +157,89 @@ async fn event_loop<B: ratatui::backend::Backend>(
             )
         })?;
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                if app.is_editing() {
-                    match key.code {
-                        KeyCode::Enter | KeyCode::Esc | KeyCode::Backspace | KeyCode::Char(_) => {
-                            app.handle_key(key)
+        match event::read()? {
+            Event::Paste(text) => app.handle_paste(&text),
+            Event::Key(key) => {
+                if key.kind == KeyEventKind::Press {
+                    if app.is_editing() {
+                        match key.code {
+                            KeyCode::Enter
+                            | KeyCode::Esc
+                            | KeyCode::Backspace
+                            | KeyCode::Char(_) => app.handle_key(key),
+                            _ => {}
                         }
-                        _ => {}
-                    }
-                } else {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Enter if app.focused == Pane::EndpointList => {
-                            if let Some(operation) = selected_operation {
-                                let missing = request::missing_required_params(
-                                    operation,
-                                    app.request_builder.inputs(),
-                                );
-                                if !missing.is_empty() {
-                                    app.set_response(request::HttpResponse {
-                                        status: 0,
-                                        headers: vec![],
-                                        body: format!(
-                                            "Missing required parameter(s): {}",
-                                            missing.join(", ")
-                                        ),
-                                    });
-                                    continue;
-                                }
-                                let mut request = request::build_preview(
-                                    base_url,
-                                    operation,
-                                    app.request_builder.inputs(),
-                                    security_schemes,
-                                    app.auth_config.inputs(),
-                                    cli_credentials,
-                                );
-
-                                match resolve_oauth2_credentials(
-                                    security_schemes,
-                                    app.auth_config.inputs(),
-                                    token_caches,
-                                    http_client,
-                                    &SystemClock,
-                                )
-                                .await
-                                {
-                                    Ok(oauth2_credentials) => {
-                                        for credential in &oauth2_credentials {
-                                            openapi_terminal_app::auth::apply(
-                                                &mut request,
-                                                credential,
-                                            );
-                                        }
-
-                                        match http_client.send(request).await {
-                                            Ok(response) => app.set_response(response),
-                                            Err(error) => app.set_response(request::HttpResponse {
-                                                status: 0,
-                                                headers: vec![],
-                                                body: format!("{error:?}"),
-                                            }),
-                                        }
+                    } else {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => break,
+                            KeyCode::Enter if app.focused == Pane::EndpointList => {
+                                if let Some(operation) = selected_operation {
+                                    let missing = request::missing_required_params(
+                                        operation,
+                                        app.request_builder.inputs(),
+                                    );
+                                    if !missing.is_empty() {
+                                        app.set_response(request::HttpResponse {
+                                            status: 0,
+                                            headers: vec![],
+                                            body: format!(
+                                                "Missing required parameter(s): {}",
+                                                missing.join(", ")
+                                            ),
+                                        });
+                                        continue;
                                     }
-                                    Err(error) => app.set_response(request::HttpResponse {
-                                        status: 0,
-                                        headers: vec![],
-                                        body: format!("{error:?}"),
-                                    }),
+                                    let mut request = request::build_preview(
+                                        base_url,
+                                        operation,
+                                        app.request_builder.inputs(),
+                                        security_schemes,
+                                        app.auth_config.inputs(),
+                                        cli_credentials,
+                                    );
+
+                                    match resolve_oauth2_credentials(
+                                        security_schemes,
+                                        app.auth_config.inputs(),
+                                        token_caches,
+                                        http_client,
+                                        &SystemClock,
+                                    )
+                                    .await
+                                    {
+                                        Ok(oauth2_credentials) => {
+                                            for credential in &oauth2_credentials {
+                                                openapi_terminal_app::auth::apply(
+                                                    &mut request,
+                                                    credential,
+                                                );
+                                            }
+
+                                            match http_client.send(request).await {
+                                                Ok(response) => app.set_response(response),
+                                                Err(error) => {
+                                                    app.set_response(request::HttpResponse {
+                                                        status: 0,
+                                                        headers: vec![],
+                                                        body: format!("{error:?}"),
+                                                    })
+                                                }
+                                            }
+                                        }
+                                        Err(error) => app.set_response(request::HttpResponse {
+                                            status: 0,
+                                            headers: vec![],
+                                            body: format!("{error:?}"),
+                                        }),
+                                    }
                                 }
                             }
+                            _ => app.handle_key(key),
                         }
-                        _ => app.handle_key(key),
                     }
                 }
             }
+            _ => {}
         }
     }
     Ok(())

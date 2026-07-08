@@ -99,10 +99,9 @@ fn build_preview_adds_content_type_header_when_body_value_is_present() {
         &[],
     );
 
-    assert!(request.headers.contains(&(
-        "Content-Type".to_string(),
-        "application/json".to_string()
-    )));
+    assert!(request
+        .headers
+        .contains(&("Content-Type".to_string(), "application/json".to_string())));
 }
 
 #[test]
@@ -152,10 +151,9 @@ fn build_preview_applies_cli_sourced_credentials() {
         &cli_credentials,
     );
 
-    assert!(request.headers.contains(&(
-        "Authorization".to_string(),
-        "Bearer cli-token".to_string()
-    )));
+    assert!(request
+        .headers
+        .contains(&("Authorization".to_string(), "Bearer cli-token".to_string())));
 }
 
 #[test]
@@ -210,10 +208,9 @@ fn build_preview_combines_cli_and_interactive_credentials() {
         &cli_credentials,
     );
 
-    assert!(request.headers.contains(&(
-        "Authorization".to_string(),
-        "Bearer cli-token".to_string()
-    )));
+    assert!(request
+        .headers
+        .contains(&("Authorization".to_string(), "Bearer cli-token".to_string())));
     assert!(request
         .headers
         .contains(&("X-API-Key".to_string(), "secret123".to_string())));

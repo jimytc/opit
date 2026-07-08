@@ -1,10 +1,5 @@
 use openapi_terminal_app::spec::{SecurityScheme, SecuritySchemeKind};
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Modifier,
-    widgets::Widget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Modifier, widgets::Widget};
 
 #[test]
 fn auth_config_renders_empty_security_schemes_message() {
@@ -136,8 +131,7 @@ fn auth_config_highlight_follows_selected_row() {
 fn auth_config_shows_inline_editing_buffer_only_for_selected_row() {
     let schemes = three_security_schemes();
 
-    let widget =
-        openapi_terminal_app::ui::auth_config::widget(&schemes, 2, Some("admin:secret"));
+    let widget = openapi_terminal_app::ui::auth_config::widget(&schemes, 2, Some("admin:secret"));
     let area = Rect::new(0, 0, 60, 5);
     let mut buffer = Buffer::empty(area);
 

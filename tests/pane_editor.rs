@@ -280,10 +280,7 @@ fn cancel_clears_buffer_without_replacing_prior_committed_input() {
     }
     editor.cancel();
 
-    assert_eq!(
-        editor.inputs().get(&0),
-        Some(&"first".to_string())
-    );
+    assert_eq!(editor.inputs().get(&0), Some(&"first".to_string()));
     assert_eq!(editor.editing_buffer(), None);
 }
 

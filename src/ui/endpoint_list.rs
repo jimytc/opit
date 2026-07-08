@@ -25,7 +25,10 @@ pub fn filtered_operations<'a>(operations: &'a [Operation], filter: &str) -> Vec
 }
 
 fn operation_lines(operation: &Operation) -> Vec<Line<'static>> {
-    let mut lines = vec![Line::from(format!("{} {}", operation.method, operation.path))];
+    let mut lines = vec![Line::from(format!(
+        "{} {}",
+        operation.method, operation.path
+    ))];
     if let Some(summary) = &operation.summary {
         lines.push(Line::from(format!("  {summary}")));
     }
@@ -66,8 +69,11 @@ pub fn render(filtered: &[&Operation], selected_operation_index: usize) -> (List
     }
 
     (
-        List::new(items)
-            .highlight_style(Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED)),
+        List::new(items).highlight_style(
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::REVERSED),
+        ),
         visual_index,
     )
 }

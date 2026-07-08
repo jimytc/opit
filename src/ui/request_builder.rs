@@ -5,7 +5,10 @@ use crate::spec::Operation;
 
 enum Row<'a> {
     Parameter(&'a crate::spec::Parameter),
-    Body { example: Option<&'a str>, committed: bool },
+    Body {
+        example: Option<&'a str>,
+        committed: bool,
+    },
 }
 
 impl Row<'_> {
@@ -60,7 +63,9 @@ pub fn widget(
         return List::new(vec![ListItem::new("No parameters")]);
     }
 
-    let highlight_style = Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED);
+    let highlight_style = Style::default()
+        .fg(Color::Green)
+        .add_modifier(Modifier::REVERSED);
     let items: Vec<ListItem> = rows
         .iter()
         .enumerate()

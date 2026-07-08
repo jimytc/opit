@@ -4,9 +4,16 @@ pub struct SecurityScheme {
 }
 
 pub enum SecuritySchemeKind {
-    ApiKey { location: String, param_name: String },
-    Http { scheme: String },
-    OAuth2 { token_url: Option<String> },
+    ApiKey {
+        location: String,
+        param_name: String,
+    },
+    Http {
+        scheme: String,
+    },
+    OAuth2 {
+        token_url: Option<String>,
+    },
     OpenIdConnect,
 }
 
@@ -18,9 +25,7 @@ fn api_key_location_str(location: &openapiv3::APIKeyLocation) -> &'static str {
     }
 }
 
-pub(super) fn security_schemes_from(
-    components: &openapiv3::Components,
-) -> Vec<SecurityScheme> {
+pub(super) fn security_schemes_from(components: &openapiv3::Components) -> Vec<SecurityScheme> {
     components
         .security_schemes
         .iter()
@@ -33,9 +38,9 @@ pub(super) fn security_schemes_from(
                         param_name: name.clone(),
                     }
                 }
-                openapiv3::SecurityScheme::HTTP { scheme, .. } => {
-                    SecuritySchemeKind::Http { scheme: scheme.clone() }
-                }
+                openapiv3::SecurityScheme::HTTP { scheme, .. } => SecuritySchemeKind::Http {
+                    scheme: scheme.clone(),
+                },
                 openapiv3::SecurityScheme::OAuth2 { flows, .. } => SecuritySchemeKind::OAuth2 {
                     token_url: flows
                         .client_credentials

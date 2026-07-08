@@ -155,10 +155,7 @@ fn ctrl_s_commits_auth_config_buffer() {
     state.handle_key(ctrl_s());
 
     assert!(!state.is_editing());
-    assert_eq!(
-        state.auth_config.inputs().get(&0),
-        Some(&"sec".to_string())
-    );
+    assert_eq!(state.auth_config.inputs().get(&0), Some(&"sec".to_string()));
     assert_eq!(state.auth_config.editing_buffer(), None);
 }
 

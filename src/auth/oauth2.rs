@@ -61,7 +61,12 @@ impl TokenCache {
         client_id: &str,
         client_secret: &str,
     ) -> Result<String, AuthError> {
-        if let Some(cached) = self.cached.lock().expect("token cache lock poisoned").as_ref() {
+        if let Some(cached) = self
+            .cached
+            .lock()
+            .expect("token cache lock poisoned")
+            .as_ref()
+        {
             if clock.now() < cached.expires_at - EXPIRY_SKEW {
                 return Ok(cached.value.clone());
             }
@@ -103,8 +108,11 @@ pub fn build_token_caches(schemes: &[SecurityScheme]) -> HashMap<usize, TokenCac
         .iter()
         .enumerate()
         .filter_map(|(index, scheme)| {
-            matches!(scheme.kind, SecuritySchemeKind::OAuth2 { token_url: Some(_) })
-                .then(|| (index, TokenCache::new()))
+            matches!(
+                scheme.kind,
+                SecuritySchemeKind::OAuth2 { token_url: Some(_) }
+            )
+            .then(|| (index, TokenCache::new()))
         })
         .collect()
 }

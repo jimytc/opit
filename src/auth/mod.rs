@@ -52,8 +52,8 @@ pub fn apply(request: &mut HttpRequest, credential: &Credential) {
                 .push(("Authorization".to_string(), format!("Bearer {token}")));
         }
         Credential::Basic { username, password } => {
-            let encoded = base64::engine::general_purpose::STANDARD
-                .encode(format!("{username}:{password}"));
+            let encoded =
+                base64::engine::general_purpose::STANDARD.encode(format!("{username}:{password}"));
             request
                 .headers
                 .push(("Authorization".to_string(), format!("Basic {encoded}")));

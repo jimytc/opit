@@ -18,7 +18,10 @@ impl FakeHttpClient {
 #[async_trait]
 impl HttpClient for FakeHttpClient {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, HttpError> {
-        *self.last_request.lock().expect("last request lock poisoned") = Some(request);
+        *self
+            .last_request
+            .lock()
+            .expect("last request lock poisoned") = Some(request);
 
         Ok(HttpResponse {
             status: 200,
@@ -38,7 +41,10 @@ async fn fake_http_client_returns_success_response() {
         body: None,
     };
 
-    let response = fake_client.send(request).await.expect("request should succeed");
+    let response = fake_client
+        .send(request)
+        .await
+        .expect("request should succeed");
 
     assert_eq!(response.status, 200);
     assert_eq!(response.body, "{\"ok\":true}");
@@ -54,7 +60,10 @@ async fn fake_http_client_records_request_url() {
         body: None,
     };
 
-    fake_client.send(request).await.expect("request should succeed");
+    fake_client
+        .send(request)
+        .await
+        .expect("request should succeed");
 
     let last_request = fake_client
         .last_request

@@ -10,21 +10,27 @@ fn static_text(scheme: &SecurityScheme) -> String {
             "http (basic) — enter as user:pass".to_string()
         }
         SecuritySchemeKind::Http { scheme } => format!("http ({scheme})"),
-        SecuritySchemeKind::OAuth2 {
-            token_url: Some(_),
-        } => "oauth2 (client_credentials) - enter as client_id:client_secret".to_string(),
+        SecuritySchemeKind::OAuth2 { token_url: Some(_) } => {
+            "oauth2 (client_credentials) - enter as client_id:client_secret".to_string()
+        }
         SecuritySchemeKind::OAuth2 { token_url: None } => "oauth2 (not editable yet)".to_string(),
         SecuritySchemeKind::OpenIdConnect => "openIdConnect (not editable yet)".to_string(),
     };
     format!("{}: {}", scheme.name, description)
 }
 
-pub fn widget(schemes: &[SecurityScheme], selected_row: usize, editing: Option<&str>) -> List<'static> {
+pub fn widget(
+    schemes: &[SecurityScheme],
+    selected_row: usize,
+    editing: Option<&str>,
+) -> List<'static> {
     if schemes.is_empty() {
         return List::new(vec![ListItem::new("No security schemes defined")]);
     }
 
-    let highlight_style = Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED);
+    let highlight_style = Style::default()
+        .fg(Color::Green)
+        .add_modifier(Modifier::REVERSED);
     let items: Vec<ListItem> = schemes
         .iter()
         .enumerate()

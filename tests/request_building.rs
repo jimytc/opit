@@ -86,7 +86,10 @@ fn build_adds_cookie_parameters_to_single_cookie_header() {
     assert_eq!(request.url, "https://api.example.com/pets?limit=10");
     assert_eq!(
         request.headers,
-        vec![("Cookie".to_string(), "session=abc123; theme=dark".to_string())]
+        vec![(
+            "Cookie".to_string(),
+            "session=abc123; theme=dark".to_string()
+        )]
     );
 }
 

@@ -36,7 +36,8 @@ fn filtered_operations_matches_summary_case_insensitively() {
         operation("POST", "/pets", Some("Create a pet")),
     ];
 
-    let filtered = openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "LIST");
+    let filtered =
+        openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "LIST");
 
     assert_eq!(filtered.len(), 1);
     assert!(std::ptr::eq(filtered[0], &operations[0]));
@@ -50,7 +51,8 @@ fn filtered_operations_excludes_non_matching_operations() {
         operation("DELETE", "/orders/{orderId}", Some("Delete an order")),
     ];
 
-    let filtered = openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "user");
+    let filtered =
+        openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "user");
 
     assert_eq!(filtered.len(), 1);
     assert!(std::ptr::eq(filtered[0], &operations[1]));
@@ -63,7 +65,8 @@ fn filtered_operations_does_not_panic_when_summary_is_none() {
         operation("GET", "/pets", Some("List all pets")),
     ];
 
-    let filtered = openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "health");
+    let filtered =
+        openapi_terminal_app::ui::endpoint_list::filtered_operations(&operations, "health");
 
     assert_eq!(filtered.len(), 1);
     assert!(std::ptr::eq(filtered[0], &operations[0]));

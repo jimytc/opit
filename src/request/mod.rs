@@ -96,7 +96,12 @@ pub fn missing_required_params(
         .iter()
         .enumerate()
         .filter(|(index, parameter)| {
-            parameter.required && inputs.get(index).map(String::as_str).unwrap_or("").is_empty()
+            parameter.required
+                && inputs
+                    .get(index)
+                    .map(String::as_str)
+                    .unwrap_or("")
+                    .is_empty()
         })
         .map(|(_, parameter)| parameter.name.clone())
         .collect()

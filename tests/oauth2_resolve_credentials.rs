@@ -3,9 +3,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use async_trait::async_trait;
-use openapi_terminal_app::auth::oauth2::{
-    build_token_caches, resolve_oauth2_credentials, Clock,
-};
+use openapi_terminal_app::auth::oauth2::{build_token_caches, resolve_oauth2_credentials, Clock};
 use openapi_terminal_app::auth::Credential;
 use openapi_terminal_app::request::{HttpClient, HttpError, HttpRequest, HttpResponse};
 use openapi_terminal_app::spec::{SecurityScheme, SecuritySchemeKind};
@@ -83,15 +81,13 @@ async fn resolves_oauth2_scheme_with_configured_credentials() {
     }];
     let inputs = HashMap::from([(0, "client-1:secret-1".to_string())]);
     let token_caches = build_token_caches(&schemes);
-    let http = FakeHttpClient::new(
-        r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#,
-    );
+    let http =
+        FakeHttpClient::new(r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#);
     let clock = FakeClock::new();
 
-    let credentials =
-        resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
-            .await
-            .expect("OAuth2 credentials should resolve");
+    let credentials = resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
+        .await
+        .expect("OAuth2 credentials should resolve");
 
     assert_eq!(credentials.len(), 1);
     match &credentials[0] {
@@ -110,15 +106,13 @@ async fn skips_oauth2_scheme_with_no_input_configured() {
     }];
     let inputs = HashMap::new();
     let token_caches = build_token_caches(&schemes);
-    let http = FakeHttpClient::new(
-        r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#,
-    );
+    let http =
+        FakeHttpClient::new(r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#);
     let clock = FakeClock::new();
 
-    let credentials =
-        resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
-            .await
-            .expect("unconfigured OAuth2 scheme should be skipped");
+    let credentials = resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
+        .await
+        .expect("unconfigured OAuth2 scheme should be skipped");
 
     assert!(credentials.is_empty());
     assert_eq!(http.call_count(), 0);
@@ -151,15 +145,13 @@ async fn skips_non_oauth2_and_oauth2_without_token_url_schemes() {
         (2, "bearer-token".to_string()),
     ]);
     let token_caches = build_token_caches(&schemes);
-    let http = FakeHttpClient::new(
-        r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#,
-    );
+    let http =
+        FakeHttpClient::new(r#"{"access_token":"tok-abc","expires_in":60,"token_type":"Bearer"}"#);
     let clock = FakeClock::new();
 
-    let credentials =
-        resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
-            .await
-            .expect("non-fetchable schemes should be skipped");
+    let credentials = resolve_oauth2_credentials(&schemes, &inputs, &token_caches, &http, &clock)
+        .await
+        .expect("non-fetchable schemes should be skipped");
 
     assert!(credentials.is_empty());
     assert_eq!(http.call_count(), 0);

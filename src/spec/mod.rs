@@ -40,9 +40,7 @@ impl Spec {
         match path.extension().and_then(|ext| ext.to_str()) {
             Some("json") => Self::from_json_str(&contents),
             Some("yaml") | Some("yml") => Self::from_yaml_str(&contents),
-            other => Err(SpecError::UnknownExtension(
-                other.unwrap_or("").to_string(),
-            )),
+            other => Err(SpecError::UnknownExtension(other.unwrap_or("").to_string())),
         }
     }
 
@@ -96,9 +94,7 @@ impl Spec {
                         method: method.to_string(),
                         parameters: operation::parameters_from(operation),
                         has_request_body: operation.request_body.is_some(),
-                        request_body_media_type: operation::request_body_media_type_from(
-                            operation,
-                        ),
+                        request_body_media_type: operation::request_body_media_type_from(operation),
                         summary: operation::summary_from(operation),
                         request_body_example: operation::request_body_example_from(operation),
                         tags: operation.tags.clone(),

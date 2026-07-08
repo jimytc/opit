@@ -29,7 +29,10 @@ impl FakeHttpClient {
 impl HttpClient for FakeHttpClient {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, HttpError> {
         *self.call_count.lock().expect("call count lock poisoned") += 1;
-        *self.last_request.lock().expect("last request lock poisoned") = Some(request);
+        *self
+            .last_request
+            .lock()
+            .expect("last request lock poisoned") = Some(request);
 
         Ok(HttpResponse {
             status: 200,

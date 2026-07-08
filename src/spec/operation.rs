@@ -33,14 +33,14 @@ pub fn example_json_from_schema(schema: &openapiv3::Schema) -> serde_json::Value
             serde_json::json!(0)
         }
         SchemaKind::Type(Type::Boolean(_)) => serde_json::Value::Bool(false),
-        SchemaKind::Type(Type::Array(array)) => match array
-            .items
-            .as_ref()
-            .and_then(|items| items.as_item())
-        {
-            Some(item_schema) => serde_json::Value::Array(vec![example_json_from_schema(item_schema)]),
-            None => serde_json::Value::Array(vec![]),
-        },
+        SchemaKind::Type(Type::Array(array)) => {
+            match array.items.as_ref().and_then(|items| items.as_item()) {
+                Some(item_schema) => {
+                    serde_json::Value::Array(vec![example_json_from_schema(item_schema)])
+                }
+                None => serde_json::Value::Array(vec![]),
+            }
+        }
         SchemaKind::Type(Type::Object(object)) => {
             let mut map = serde_json::Map::new();
             for (name, property) in &object.properties {

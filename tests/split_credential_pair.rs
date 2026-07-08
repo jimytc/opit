@@ -18,10 +18,7 @@ fn returns_empty_second_half_when_no_colon_exists() {
 
 #[test]
 fn returns_two_empty_strings_for_empty_input() {
-    assert_eq!(
-        split_credential_pair(""),
-        ("".to_string(), "".to_string())
-    );
+    assert_eq!(split_credential_pair(""), ("".to_string(), "".to_string()));
 }
 
 #[test]
