@@ -297,6 +297,43 @@ fn request_builder_shows_body_example_hint_before_body_is_committed() {
 }
 
 #[test]
+fn request_builder_keeps_multiline_body_example_hint_on_one_row() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: Some("{\n  \"name\": \"\",\n  \"age\": 0\n}".to_string()),
+        tags: vec![],
+    };
+
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
+    let area = Rect::new(0, 0, 80, 6);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+    let line_1 = row_text(&buffer, area, 1);
+
+    assert!(
+        line_0.contains("Body"),
+        "expected row 0 to contain 'Body', got {line_0:?}"
+    );
+    assert!(
+        line_0.contains("e.g."),
+        "expected row 0 to contain the body example hint, got {line_0:?}"
+    );
+    assert!(
+        line_1.trim().is_empty(),
+        "expected multiline body example hint to occupy only row 0, got row 1 {line_1:?}"
+    );
+}
+
+#[test]
 fn request_builder_keeps_plain_body_text_after_body_is_committed() {
     let operation = Operation {
         path: "/pets".to_string(),
