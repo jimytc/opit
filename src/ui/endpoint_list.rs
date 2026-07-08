@@ -4,24 +4,45 @@ use ratatui::widgets::{List, ListItem};
 
 use crate::spec::Operation;
 
+fn operation_group(operation: &Operation) -> &str {
+    operation.tags.first().map(String::as_str).unwrap_or("Untagged")
+}
+
 pub fn filtered_operations<'a>(operations: &'a [Operation], filter: &str) -> Vec<&'a Operation> {
-    if filter.is_empty() {
-        return operations.iter().collect();
+    let matching: Vec<&Operation> = if filter.is_empty() {
+        operations.iter().collect()
+    } else {
+        let filter = filter.to_lowercase();
+        operations
+            .iter()
+            .filter(|operation| {
+                format!(
+                    "{} {} {}",
+                    operation.method,
+                    operation.path,
+                    operation.summary.as_deref().unwrap_or("")
+                )
+                .to_lowercase()
+                .contains(&filter)
+            })
+            .collect()
+    };
+
+    let mut group_order: Vec<&str> = Vec::new();
+    let mut groups: Vec<Vec<&Operation>> = Vec::new();
+    for operation in matching {
+        let group = operation_group(operation);
+        let position = match group_order.iter().position(|existing| *existing == group) {
+            Some(position) => position,
+            None => {
+                group_order.push(group);
+                groups.push(Vec::new());
+                group_order.len() - 1
+            }
+        };
+        groups[position].push(operation);
     }
-    let filter = filter.to_lowercase();
-    operations
-        .iter()
-        .filter(|operation| {
-            format!(
-                "{} {} {}",
-                operation.method,
-                operation.path,
-                operation.summary.as_deref().unwrap_or("")
-            )
-            .to_lowercase()
-            .contains(&filter)
-        })
-        .collect()
+    groups.into_iter().flatten().collect()
 }
 
 fn operation_lines(operation: &Operation) -> Vec<Line<'static>> {
@@ -36,36 +57,20 @@ fn operation_lines(operation: &Operation) -> Vec<Line<'static>> {
 }
 
 pub fn render(filtered: &[&Operation], selected_operation_index: usize) -> (List<'static>, usize) {
-    let mut group_order: Vec<&str> = Vec::new();
-    let mut groups: Vec<Vec<usize>> = Vec::new();
-
-    for (index, operation) in filtered.iter().enumerate() {
-        let group = operation
-            .tags
-            .first()
-            .map(String::as_str)
-            .unwrap_or("Untagged");
-        let group_position = match group_order.iter().position(|existing| *existing == group) {
-            Some(position) => position,
-            None => {
-                group_order.push(group);
-                groups.push(Vec::new());
-                group_order.len() - 1
-            }
-        };
-        groups[group_position].push(index);
-    }
-
     let mut items = Vec::new();
     let mut visual_index = 0usize;
-    for (group_name, operation_indices) in group_order.iter().zip(groups.iter()) {
-        items.push(ListItem::new(Line::from(group_name.to_string())));
-        for &index in operation_indices {
-            if index == selected_operation_index {
-                visual_index = items.len();
-            }
-            items.push(ListItem::new(operation_lines(filtered[index])));
+    let mut current_group: Option<&str> = None;
+
+    for (index, operation) in filtered.iter().enumerate() {
+        let group = operation_group(operation);
+        if current_group != Some(group) {
+            items.push(ListItem::new(Line::from(group.to_string())));
+            current_group = Some(group);
         }
+        if index == selected_operation_index {
+            visual_index = items.len();
+        }
+        items.push(ListItem::new(operation_lines(operation)));
     }
 
     (
