@@ -175,6 +175,36 @@ fn endpoint_navigation_never_resets_auth_config() {
 }
 
 #[test]
+fn sync_selected_operation_resets_request_builder_when_identity_changes_at_same_index() {
+    let mut state = AppState::new();
+    state.sync_selected_operation(Some(("GET", "/pets")));
+    commit_request_builder_input(&mut state, "x");
+
+    state.sync_selected_operation(Some(("POST", "/pets")));
+
+    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert_eq!(state.selected_operation_index, 0);
+}
+
+#[test]
+fn sync_selected_operation_does_not_reset_request_builder_when_identity_is_unchanged_at_same_index()
+{
+    let mut state = AppState::new();
+    state.sync_selected_operation(Some(("GET", "/pets")));
+    commit_request_builder_input(&mut state, "x");
+
+    state.sync_selected_operation(Some(("GET", "/pets")));
+
+    assert_eq!(
+        state.request_builder.inputs().get(&0),
+        Some(&"x".to_string())
+    );
+    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert_eq!(state.selected_operation_index, 0);
+}
+
+#[test]
 fn response_viewer_ignores_editing_and_navigation_keys() {
     let mut state = AppState::new();
     state.set_operation_count(3);
