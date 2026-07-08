@@ -44,6 +44,45 @@ fn build_replaces_path_parameters_and_adds_query_and_header_values() {
 }
 
 #[test]
+fn build_adds_cookie_parameters_to_single_cookie_header() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "GET".to_string(),
+        parameters: vec![
+            Parameter {
+                name: "session".to_string(),
+                location: "cookie".to_string(),
+                required: false,
+            },
+            Parameter {
+                name: "limit".to_string(),
+                location: "query".to_string(),
+                required: false,
+            },
+            Parameter {
+                name: "theme".to_string(),
+                location: "cookie".to_string(),
+                required: false,
+            },
+        ],
+        has_request_body: false,
+    };
+    let param_values = HashMap::from([
+        ("session".to_string(), "abc123".to_string()),
+        ("limit".to_string(), "10".to_string()),
+        ("theme".to_string(), "dark".to_string()),
+    ]);
+
+    let request = build("https://api.example.com", &operation, &param_values);
+
+    assert_eq!(request.url, "https://api.example.com/pets?limit=10");
+    assert_eq!(
+        request.headers,
+        vec![("Cookie".to_string(), "session=abc123; theme=dark".to_string())]
+    );
+}
+
+#[test]
 fn build_without_parameters_uses_method_and_base_url_plus_path() {
     let operation = Operation {
         path: "/pets".to_string(),
