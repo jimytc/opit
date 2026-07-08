@@ -5,14 +5,14 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use openapi_terminal_app::app::{AppState, Pane};
-use openapi_terminal_app::auth::{self, Credential};
+use openapi_terminal_app::auth::Credential;
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
 use openapi_terminal_app::spec::{Operation, SecurityScheme, SecuritySchemeKind, Spec};
 use openapi_terminal_app::ui::{auth_config, endpoint_list, request_builder, response_viewer};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, ListState};
+use ratatui::widgets::{Block, ListState, Paragraph, Wrap};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
@@ -94,7 +94,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
         app.auth_config
             .set_non_editable_rows(non_editable_auth_rows(security_schemes));
 
-        terminal.draw(|frame| draw(frame, app, operations, security_schemes))?;
+        terminal.draw(|frame| draw(frame, app, operations, security_schemes, base_url, cli_credentials))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -110,25 +110,14 @@ async fn event_loop<B: ratatui::backend::Backend>(
                         KeyCode::Char('q') | KeyCode::Esc => break,
                         KeyCode::Enter if app.focused == Pane::EndpointList => {
                             if let Some(operation) = selected_operation {
-                                let param_inputs = request::param_values_from_inputs(
+                                let request = request::build_preview(
+                                    base_url,
                                     operation,
                                     app.request_builder.inputs(),
-                                );
-                                let mut request = request::build(base_url, operation, &param_inputs);
-                                if let Some(body) =
-                                    request::body_from_inputs(operation, app.request_builder.inputs())
-                                {
-                                    request.body = Some(body);
-                                }
-
-                                let mut credentials = cli_credentials.to_vec();
-                                credentials.extend(auth::credentials_from_inputs(
                                     security_schemes,
                                     app.auth_config.inputs(),
-                                ));
-                                for credential in &credentials {
-                                    auth::apply(&mut request, credential);
-                                }
+                                    cli_credentials,
+                                );
 
                                 match http_client.send(request).await {
                                     Ok(response) => app.set_response(response),
@@ -168,6 +157,8 @@ fn draw(
     app: &AppState,
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
+    base_url: &str,
+    cli_credentials: &[Credential],
 ) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
@@ -199,15 +190,37 @@ fn draw(
     let request_builder_block = Block::bordered()
         .title("Request Builder")
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
+    let request_builder_inner = request_builder_block.inner(top[1]);
+    frame.render_widget(request_builder_block, top[1]);
+
+    let request_builder_sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(3), Constraint::Percentage(40)])
+        .split(request_builder_inner);
     frame.render_widget(
         request_builder::widget(
             selected_operation,
             app.request_builder.selected_row(),
             app.request_builder.editing_buffer(),
-        )
-        .block(request_builder_block),
-        top[1],
+        ),
+        request_builder_sections[0],
     );
+
+    if let Some(operation) = selected_operation {
+        let preview_request = request::build_preview(
+            base_url,
+            operation,
+            &app.request_builder.inputs_with_live_edit(),
+            security_schemes,
+            &app.auth_config.inputs_with_live_edit(),
+            cli_credentials,
+        );
+        let curl_text = request::to_curl(&preview_request);
+        frame.render_widget(
+            Paragraph::new(curl_text).wrap(Wrap { trim: false }),
+            request_builder_sections[1],
+        );
+    }
 
     let auth_config_block = Block::bordered()
         .title("Auth Config")
