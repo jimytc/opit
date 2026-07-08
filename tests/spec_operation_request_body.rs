@@ -120,3 +120,130 @@ fn get_operation_without_request_body_reports_no_request_body_media_type() {
 
     assert_eq!(operation.request_body_media_type, None);
 }
+
+#[test]
+fn get_operation_reports_summary_and_tags() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "get": {
+            "operationId": "listPets",
+            "summary": "List all pets",
+            "tags": ["Pets"],
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "GET")
+        .expect("GET /pets operation exists");
+
+    assert_eq!(operation.summary, Some("List all pets".to_string()));
+    assert_eq!(operation.tags, vec!["Pets".to_string()]);
+}
+
+#[test]
+fn get_operation_uses_description_as_summary_when_summary_is_absent() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "get": {
+            "operationId": "listPets",
+            "description": "Returns every pet in the store",
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "GET")
+        .expect("GET /pets operation exists");
+
+    assert_eq!(
+        operation.summary,
+        Some("Returns every pet in the store".to_string())
+    );
+}
+
+#[test]
+fn get_operation_without_summary_or_description_reports_no_summary() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "get": {
+            "operationId": "listPets",
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "GET")
+        .expect("GET /pets operation exists");
+
+    assert_eq!(operation.summary, None);
+}
+
+#[test]
+fn get_operation_without_tags_reports_empty_tags() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "get": {
+            "operationId": "listPets",
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "GET")
+        .expect("GET /pets operation exists");
+
+    assert_eq!(operation.tags, Vec::<String>::new());
+}

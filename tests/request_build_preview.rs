@@ -11,6 +11,9 @@ fn get_pets_operation() -> Operation {
         parameters: vec![],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     }
 }
 
@@ -26,6 +29,9 @@ fn build_preview_replaces_path_parameters_from_indexed_inputs() {
         }],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_inputs = HashMap::from([(0, "123".to_string())]);
     let auth_inputs = HashMap::new();
@@ -51,6 +57,9 @@ fn build_preview_stores_raw_body_from_body_row() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
     let auth_inputs = HashMap::new();
@@ -75,6 +84,9 @@ fn build_preview_adds_content_type_header_when_body_value_is_present() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
 
@@ -101,6 +113,9 @@ fn build_preview_omits_content_type_header_when_body_value_is_absent() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_inputs = HashMap::new();
 

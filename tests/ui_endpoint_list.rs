@@ -15,6 +15,9 @@ fn endpoint_list_renders_method_and_path_for_each_operation() {
             parameters: vec![],
             has_request_body: false,
             request_body_media_type: None,
+            summary: None,
+            request_body_example: None,
+            tags: vec![],
         },
         Operation {
             path: "/pets".to_string(),
@@ -22,6 +25,9 @@ fn endpoint_list_renders_method_and_path_for_each_operation() {
             parameters: vec![],
             has_request_body: false,
             request_body_media_type: None,
+            summary: None,
+            request_body_example: None,
+            tags: vec![],
         },
     ];
 
@@ -53,6 +59,9 @@ fn endpoint_list_applies_reversed_highlight_style_to_selected_row_only() {
             parameters: vec![],
             has_request_body: false,
             request_body_media_type: None,
+            summary: None,
+            request_body_example: None,
+            tags: vec![],
         },
         Operation {
             path: "/pets".to_string(),
@@ -60,6 +69,9 @@ fn endpoint_list_applies_reversed_highlight_style_to_selected_row_only() {
             parameters: vec![],
             has_request_body: false,
             request_body_media_type: None,
+            summary: None,
+            request_body_example: None,
+            tags: vec![],
         },
     ];
 

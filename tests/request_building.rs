@@ -27,6 +27,9 @@ fn build_replaces_path_parameters_and_adds_query_and_header_values() {
         ],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_values = HashMap::from([
         ("petId".to_string(), "123".to_string()),
@@ -68,6 +71,9 @@ fn build_adds_cookie_parameters_to_single_cookie_header() {
         ],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_values = HashMap::from([
         ("session".to_string(), "abc123".to_string()),
@@ -92,6 +98,9 @@ fn build_without_parameters_uses_method_and_base_url_plus_path() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
     let param_values = HashMap::new();
 

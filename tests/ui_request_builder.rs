@@ -30,6 +30,9 @@ fn request_builder_with_no_parameters_renders_no_parameters() {
         parameters: vec![],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
 
     let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
@@ -64,6 +67,9 @@ fn two_parameter_operation() -> Operation {
         ],
         has_request_body: false,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     }
 }
 
@@ -162,6 +168,9 @@ fn request_builder_with_only_request_body_renders_body_row() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
 
     let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
@@ -186,6 +195,9 @@ fn request_builder_shows_inline_editing_buffer_for_body_row() {
         parameters: vec![],
         has_request_body: true,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
 
     let widget = openapi_terminal_app::ui::request_builder::widget(
@@ -222,6 +234,9 @@ fn request_builder_body_row_follows_parameters() {
         }],
         has_request_body: true,
         request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
     };
 
     let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 1, None);
