@@ -261,7 +261,7 @@ fn non_editable_auth_rows(security_schemes: &[SecurityScheme]) -> HashSet<usize>
 
 fn draw(
     frame: &mut ratatui::Frame,
-    app: &AppState,
+    app: &mut AppState,
     filtered: &[&Operation],
     security_schemes: &[SecurityScheme],
     base_url: &str,
@@ -315,7 +315,9 @@ fn draw(
     let auth_config_block = Block::bordered()
         .title("Auth Config")
         .border_style(pane_border_style(app.focused, Pane::AuthConfig));
-    frame.render_widget(
+    let mut auth_config_state = ListState::default();
+    auth_config_state.select(Some(app.auth_config.selected_row()));
+    frame.render_stateful_widget(
         auth_config::widget(
             security_schemes,
             app.auth_config.selected_row(),
@@ -323,6 +325,7 @@ fn draw(
         )
         .block(auth_config_block),
         right[0],
+        &mut auth_config_state,
     );
 
     let request_builder_block = Block::bordered()
@@ -335,7 +338,9 @@ fn draw(
                 .contains_key(&operation.parameters.len())
         })
         .unwrap_or(false);
-    frame.render_widget(
+    let mut request_builder_state = ListState::default();
+    request_builder_state.select(Some(app.request_builder.selected_row()));
+    frame.render_stateful_widget(
         request_builder::widget(
             selected_operation,
             app.request_builder.selected_row(),
@@ -344,6 +349,7 @@ fn draw(
         )
         .block(request_builder_block),
         right[1],
+        &mut request_builder_state,
     );
 
     let curl_preview_block = Block::bordered()
@@ -361,17 +367,32 @@ fn draw(
             cli_credentials,
         );
         let curl_text = request::to_curl(&preview_request);
+        let curl_paragraph = Paragraph::new(curl_text).wrap(Wrap { trim: false });
+        let line_count = curl_paragraph.line_count(curl_preview_inner.width);
+        app.set_curl_preview_max_scroll(
+            line_count.saturating_sub(curl_preview_inner.height as usize) as u16,
+        );
         frame.render_widget(
-            Paragraph::new(curl_text).wrap(Wrap { trim: false }),
+            curl_paragraph.scroll((app.curl_preview_scroll(), 0)),
             curl_preview_inner,
         );
+    } else {
+        app.set_curl_preview_max_scroll(0);
     }
 
     let response_viewer_block = Block::bordered()
         .title("Response Viewer")
         .border_style(pane_border_style(app.focused, Pane::ResponseViewer));
+    let response_viewer_inner = response_viewer_block.inner(right[3]);
+    let response_viewer_paragraph = response_viewer::widget(app.response());
+    let response_line_count = response_viewer_paragraph.line_count(response_viewer_inner.width);
+    app.set_response_viewer_max_scroll(
+        response_line_count.saturating_sub(response_viewer_inner.height as usize) as u16,
+    );
     frame.render_widget(
-        response_viewer::widget(app.response()).block(response_viewer_block),
+        response_viewer_paragraph
+            .scroll((app.response_viewer_scroll(), 0))
+            .block(response_viewer_block),
         right[3],
     );
 }
