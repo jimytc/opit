@@ -83,3 +83,17 @@ pub fn pretty_print_if_json(body: &str) -> String {
         Err(_) => body.to_string(),
     }
 }
+
+/// Known limitation: header/body values containing a single quote are not
+/// shell-escaped, so a value with a `'` will produce a curl command that
+/// isn't directly copy-paste-safe.
+pub fn to_curl(request: &HttpRequest) -> String {
+    let mut curl = format!("curl -X {} '{}'", request.method, request.url);
+    for (name, value) in &request.headers {
+        curl.push_str(&format!(" -H '{name}: {value}'"));
+    }
+    if let Some(body) = &request.body {
+        curl.push_str(&format!(" --data '{}'", pretty_print_if_json(body)));
+    }
+    curl
+}
