@@ -5,6 +5,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use openapi_terminal_app::app::{AppState, Pane};
+use openapi_terminal_app::auth::oauth2::{build_token_caches, resolve_oauth2_credentials, SystemClock};
 use openapi_terminal_app::auth::Credential;
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
@@ -57,6 +58,7 @@ async fn run_app(
     let mut app = AppState::new();
     app.set_operation_count(operations.len());
     let http_client = ReqwestClient::new();
+    let token_caches = build_token_caches(security_schemes);
 
     let result = event_loop(
         &mut terminal,
@@ -66,6 +68,7 @@ async fn run_app(
         base_url,
         credentials,
         &http_client,
+        &token_caches,
     )
     .await;
 
@@ -83,6 +86,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
     base_url: &str,
     cli_credentials: &[Credential],
     http_client: &dyn HttpClient,
+    token_caches: &std::collections::HashMap<usize, openapi_terminal_app::auth::oauth2::TokenCache>,
 ) -> anyhow::Result<()> {
     loop {
         let selected_operation = operations.get(app.selected_operation_index);
@@ -110,7 +114,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
                         KeyCode::Char('q') | KeyCode::Esc => break,
                         KeyCode::Enter if app.focused == Pane::EndpointList => {
                             if let Some(operation) = selected_operation {
-                                let request = request::build_preview(
+                                let mut request = request::build_preview(
                                     base_url,
                                     operation,
                                     app.request_builder.inputs(),
@@ -119,8 +123,32 @@ async fn event_loop<B: ratatui::backend::Backend>(
                                     cli_credentials,
                                 );
 
-                                match http_client.send(request).await {
-                                    Ok(response) => app.set_response(response),
+                                match resolve_oauth2_credentials(
+                                    security_schemes,
+                                    app.auth_config.inputs(),
+                                    token_caches,
+                                    http_client,
+                                    &SystemClock,
+                                )
+                                .await
+                                {
+                                    Ok(oauth2_credentials) => {
+                                        for credential in &oauth2_credentials {
+                                            openapi_terminal_app::auth::apply(
+                                                &mut request,
+                                                credential,
+                                            );
+                                        }
+
+                                        match http_client.send(request).await {
+                                            Ok(response) => app.set_response(response),
+                                            Err(error) => app.set_response(request::HttpResponse {
+                                                status: 0,
+                                                headers: vec![],
+                                                body: format!("{error:?}"),
+                                            }),
+                                        }
+                                    }
                                     Err(error) => app.set_response(request::HttpResponse {
                                         status: 0,
                                         headers: vec![],
