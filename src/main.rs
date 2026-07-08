@@ -90,7 +90,14 @@ async fn event_loop<B: ratatui::backend::Backend>(
     token_caches: &std::collections::HashMap<usize, openapi_terminal_app::auth::oauth2::TokenCache>,
 ) -> anyhow::Result<()> {
     loop {
-        let selected_operation = operations.get(app.selected_operation_index);
+        let filtered = endpoint_list::filtered_operations(operations, &app.endpoint_filter);
+        app.set_operation_count(filtered.len());
+        app.sync_selected_operation(
+            filtered
+                .get(app.selected_operation_index)
+                .map(|operation| (operation.method.as_str(), operation.path.as_str())),
+        );
+        let selected_operation = filtered.get(app.selected_operation_index).copied();
         let request_builder_row_count = selected_operation
             .map(|operation| operation.parameters.len() + usize::from(operation.has_request_body))
             .unwrap_or(0);
@@ -103,7 +110,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
             .map(String::as_str)
             .unwrap_or_default();
 
-        terminal.draw(|frame| draw(frame, app, operations, security_schemes, base_url, servers, cli_credentials))?;
+        terminal.draw(|frame| draw(frame, app, &filtered, security_schemes, base_url, servers, cli_credentials))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -203,7 +210,7 @@ fn non_editable_auth_rows(security_schemes: &[SecurityScheme]) -> HashSet<usize>
 fn draw(
     frame: &mut ratatui::Frame,
     app: &AppState,
-    operations: &[Operation],
+    filtered: &[&Operation],
     security_schemes: &[SecurityScheme],
     base_url: &str,
     servers: &[String],
@@ -222,23 +229,28 @@ fn draw(
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(rows[1]);
 
-    let endpoint_title = if servers.len() > 1 {
-        format!(
+    let endpoint_title = match (servers.len() > 1, app.endpoint_filter.is_empty()) {
+        (true, true) => format!(
             "Endpoints — server {}/{} (press 's')",
             app.selected_server_index + 1,
             servers.len()
-        )
-    } else {
-        "Endpoints".to_string()
+        ),
+        (true, false) => format!(
+            "Endpoints — server {}/{} (press 's') — filter: {}",
+            app.selected_server_index + 1,
+            servers.len(),
+            app.endpoint_filter
+        ),
+        (false, true) => "Endpoints".to_string(),
+        (false, false) => format!("Endpoints — filter: {}", app.endpoint_filter),
     };
     let endpoint_block = Block::bordered()
         .title(endpoint_title)
         .border_style(pane_border_style(app.focused, Pane::EndpointList));
-    let all_operations: Vec<&Operation> = operations.iter().collect();
     let (endpoint_list_widget, visual_index) =
-        endpoint_list::render(&all_operations, app.selected_operation_index);
+        endpoint_list::render(filtered, app.selected_operation_index);
     let mut list_state = ListState::default();
-    if !operations.is_empty() {
+    if !filtered.is_empty() {
         list_state.select(Some(visual_index));
     }
     frame.render_stateful_widget(
@@ -247,7 +259,7 @@ fn draw(
         &mut list_state,
     );
 
-    let selected_operation = operations.get(app.selected_operation_index);
+    let selected_operation = filtered.get(app.selected_operation_index).copied();
     let request_builder_block = Block::bordered()
         .title("Request Builder")
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
