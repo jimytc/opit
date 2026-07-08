@@ -183,6 +183,55 @@ fn auth_config_renders_oauth2_as_not_editable_yet() {
 }
 
 #[test]
+fn auth_config_renders_oauth2_client_credentials_hint_when_token_url_present() {
+    let schemes = vec![SecurityScheme {
+        name: "oauth2Auth".to_string(),
+        kind: SecuritySchemeKind::OAuth2 {
+            token_url: Some("https://auth.example.com/token".to_string()),
+        },
+    }];
+
+    let widget = openapi_terminal_app::ui::auth_config::widget(&schemes, 0, None);
+    let area = Rect::new(0, 0, 70, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains(
+            "oauth2Auth: oauth2 (client_credentials) - enter as client_id:client_secret"
+        ),
+        "expected row 0 to contain 'oauth2Auth: oauth2 (client_credentials) - enter as client_id:client_secret', got {line_0:?}"
+    );
+}
+
+#[test]
+fn auth_config_shows_raw_buffer_while_editing_oauth2_with_token_url() {
+    let schemes = vec![SecurityScheme {
+        name: "oauth2Auth".to_string(),
+        kind: SecuritySchemeKind::OAuth2 {
+            token_url: Some("https://auth.example.com/token".to_string()),
+        },
+    }];
+
+    let widget =
+        openapi_terminal_app::ui::auth_config::widget(&schemes, 0, Some("client-1:secret-1"));
+    let area = Rect::new(0, 0, 70, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains("oauth2Auth: client-1:secret-1"),
+        "expected row 0 to contain 'oauth2Auth: client-1:secret-1', got {line_0:?}"
+    );
+}
+
+#[test]
 fn auth_config_renders_open_id_connect_as_not_editable_yet() {
     let schemes = vec![SecurityScheme {
         name: "oidcAuth".to_string(),
