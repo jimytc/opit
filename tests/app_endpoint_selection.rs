@@ -9,6 +9,13 @@ fn new_app_state_starts_with_first_operation_selected() {
 }
 
 #[test]
+fn new_app_state_starts_with_first_server_selected() {
+    let state = AppState::new();
+
+    assert_eq!(state.selected_server_index, 0);
+}
+
+#[test]
 fn down_moves_selection_until_last_operation_and_clamps() {
     let mut state = AppState::new();
     state.set_operation_count(3);
@@ -46,4 +53,44 @@ fn up_and_down_do_not_change_selection_when_endpoint_list_is_not_focused() {
 
     state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(state.selected_operation_index, 1);
+}
+
+#[test]
+fn s_cycles_selected_server_index_and_wraps() {
+    let mut state = AppState::new();
+    state.set_server_count(3);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    assert_eq!(state.selected_server_index, 1);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    assert_eq!(state.selected_server_index, 2);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    assert_eq!(state.selected_server_index, 0);
+}
+
+#[test]
+fn s_does_not_change_selected_server_index_when_server_count_is_zero() {
+    let mut state = AppState::new();
+    state.set_server_count(0);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+
+    assert_eq!(state.selected_server_index, 0);
+}
+
+#[test]
+fn s_does_not_change_selected_server_index_when_endpoint_list_is_not_focused() {
+    let mut state = AppState::new();
+    state.set_server_count(3);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    assert_eq!(state.selected_server_index, 1);
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::RequestBuilder);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    assert_eq!(state.selected_server_index, 1);
 }
