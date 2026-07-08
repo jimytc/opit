@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -5,6 +6,7 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use crate::request::{HttpClient, HttpError, HttpRequest};
+use crate::spec::{SecurityScheme, SecuritySchemeKind};
 
 const EXPIRY_SKEW: Duration = Duration::from_secs(30);
 
@@ -93,4 +95,15 @@ impl Default for TokenCache {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub fn build_token_caches(schemes: &[SecurityScheme]) -> HashMap<usize, TokenCache> {
+    schemes
+        .iter()
+        .enumerate()
+        .filter_map(|(index, scheme)| {
+            matches!(scheme.kind, SecuritySchemeKind::OAuth2 { token_url: Some(_) })
+                .then(|| (index, TokenCache::new()))
+        })
+        .collect()
 }
