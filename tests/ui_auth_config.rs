@@ -57,7 +57,7 @@ fn auth_config_renders_multiple_security_scheme_kinds() {
         },
         SecurityScheme {
             name: "oauth2Auth".to_string(),
-            kind: SecuritySchemeKind::OAuth2,
+            kind: SecuritySchemeKind::OAuth2 { token_url: None },
         },
     ];
 
@@ -165,7 +165,7 @@ fn auth_config_shows_inline_editing_buffer_only_for_selected_row() {
 fn auth_config_renders_oauth2_as_not_editable_yet() {
     let schemes = vec![SecurityScheme {
         name: "oauth2Auth".to_string(),
-        kind: SecuritySchemeKind::OAuth2,
+        kind: SecuritySchemeKind::OAuth2 { token_url: None },
     }];
 
     let widget = openapi_terminal_app::ui::auth_config::widget(&schemes, 0, None);

@@ -84,7 +84,9 @@ fn basic_scheme_without_colon_uses_whole_string_as_username() {
 fn oauth2_scheme_produces_no_credential_even_with_input() {
     let schemes = vec![SecurityScheme {
         name: "oauth2Auth".to_string(),
-        kind: SecuritySchemeKind::OAuth2,
+        kind: SecuritySchemeKind::OAuth2 {
+            token_url: Some("https://auth.example.com/token".to_string()),
+        },
     }];
     let inputs = HashMap::from([(0, "irrelevant".to_string())]);
 

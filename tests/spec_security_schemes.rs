@@ -57,6 +57,45 @@ fn spec_exposes_security_schemes_from_components() {
             )
     }));
     assert!(security_schemes.iter().any(|scheme| {
-        scheme.name == "oauth2Auth" && matches!(&scheme.kind, SecuritySchemeKind::OAuth2)
+        scheme.name == "oauth2Auth" && matches!(&scheme.kind, SecuritySchemeKind::OAuth2 { .. })
+    }));
+}
+
+#[test]
+fn oauth2_without_client_credentials_flow_has_no_token_url() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Secure API",
+        "version": "1.0.0"
+      },
+      "paths": {},
+      "components": {
+        "securitySchemes": {
+          "oauth2NoClientCreds": {
+            "type": "oauth2",
+            "flows": {
+              "authorizationCode": {
+                "authorizationUrl": "https://example.com/authorize",
+                "tokenUrl": "https://example.com/token",
+                "scopes": {}
+              }
+            }
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let security_schemes = spec.security_schemes();
+
+    assert!(security_schemes.iter().any(|scheme| {
+        scheme.name == "oauth2NoClientCreds"
+            && matches!(
+                &scheme.kind,
+                SecuritySchemeKind::OAuth2 { token_url } if token_url.is_none()
+            )
     }));
 }
