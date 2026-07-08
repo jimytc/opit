@@ -234,12 +234,15 @@ fn draw(
     let endpoint_block = Block::bordered()
         .title(endpoint_title)
         .border_style(pane_border_style(app.focused, Pane::EndpointList));
+    let all_operations: Vec<&Operation> = operations.iter().collect();
+    let (endpoint_list_widget, visual_index) =
+        endpoint_list::render(&all_operations, app.selected_operation_index);
     let mut list_state = ListState::default();
     if !operations.is_empty() {
-        list_state.select(Some(app.selected_operation_index));
+        list_state.select(Some(visual_index));
     }
     frame.render_stateful_widget(
-        endpoint_list::widget(operations).block(endpoint_block),
+        endpoint_list_widget.block(endpoint_block),
         top[0],
         &mut list_state,
     );
