@@ -1,4 +1,4 @@
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{List, ListItem};
 
@@ -66,7 +66,8 @@ pub fn render(filtered: &[&Operation], selected_operation_index: usize) -> (List
     }
 
     (
-        List::new(items).highlight_style(Style::default().add_modifier(Modifier::REVERSED)),
+        List::new(items)
+            .highlight_style(Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED)),
         visual_index,
     )
 }

@@ -354,7 +354,7 @@ fn draw(
 
 fn pane_border_style(focused: Pane, pane: Pane) -> Style {
     if focused == pane {
-        Style::default().fg(Color::Yellow)
+        Style::default().fg(Color::Green)
     } else {
         Style::default()
     }
