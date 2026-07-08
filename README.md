@@ -74,9 +74,10 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 | `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config |
 | `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
 | `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
-| `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing |
+| `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing — except on the Body row (see below), where Enter inserts a newline instead |
+| `Ctrl+S`        | While editing any Request Builder/Auth Config row, commit the in-progress value (the only way to commit the Body row, since Enter there inserts a newline) |
 | `Esc`           | Cancel an in-progress edit, or (while filtering) clear the filter and stop typing — otherwise quit |
-| Any character / `Backspace` | While editing a row or typing a filter, types into / erases from that value |
+| Any character / `Backspace` / paste | While editing a row or typing a filter, types into / erases from / pastes into that value. Paste is inserted as a whole chunk, embedded newlines included |
 | `q`             | Quit (only when not currently editing a field or filtering)           |
 
 ### Panes
@@ -107,7 +108,9 @@ back to Endpoints.
   row and press `Enter` to type its value. Required parameters are labeled accordingly,
   and sending is blocked with a message in Response Viewer if any are left empty. The
   Body row shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
-  value for it
+  value for it. Unlike the other rows, the Body row supports multi-line editing: `Enter`
+  inserts a newline instead of committing, pasted text (including embedded newlines) is
+  inserted in one step, and `Ctrl+S` commits the value
 - **Curl Preview** — a read-only pane showing exactly what would be sent as a
   `curl`-equivalent command; it updates as you type, even before committing a field with
   `Enter`, reflecting in-progress edits in both Request Builder and Auth Config
