@@ -3,6 +3,15 @@ pub struct Operation {
     pub method: String,
     pub parameters: Vec<Parameter>,
     pub has_request_body: bool,
+    pub request_body_media_type: Option<String>,
+}
+
+pub(super) fn request_body_media_type_from(operation: &openapiv3::Operation) -> Option<String> {
+    operation
+        .request_body
+        .as_ref()
+        .and_then(|body| body.as_item())
+        .and_then(|body| body.content.keys().next().cloned())
 }
 
 pub struct Parameter {

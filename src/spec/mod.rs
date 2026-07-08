@@ -80,6 +80,9 @@ impl Spec {
                         method: method.to_string(),
                         parameters: operation::parameters_from(operation),
                         has_request_body: operation.request_body.is_some(),
+                        request_body_media_type: operation::request_body_media_type_from(
+                            operation,
+                        ),
                     });
                 }
             }

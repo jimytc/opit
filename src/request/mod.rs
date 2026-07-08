@@ -113,6 +113,11 @@ pub fn build_preview(
     let mut request = build(base_url, operation, &param_values);
     if let Some(body) = body_from_inputs(operation, param_inputs) {
         request.body = Some(body);
+        if let Some(media_type) = &operation.request_body_media_type {
+            request
+                .headers
+                .push(("Content-Type".to_string(), media_type.clone()));
+        }
     }
 
     let mut credentials = cli_credentials.to_vec();
