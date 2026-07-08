@@ -81,21 +81,19 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 
 ### Panes
 
+The left column is a single full-height **Endpoints** pane; the right column stacks
+**Auth Config**, **Request Builder**, **Curl Preview**, and **Response Viewer** top to
+bottom — this is also the `Tab`/`Shift+Tab` focus order, wrapping from Response Viewer
+back to Endpoints.
+
 - **Endpoints** — list of operations from the loaded spec, grouped under a header row
   per first tag (or "Untagged" if an operation has none), in first-appearance order; the
   selected row is highlighted. Each operation shows `METHOD /path`, plus an indented
   summary line underneath when the spec provides a `summary` (or falls back to
-  `description`). Press `/` to filter the list live (case-insensitive substring match
-  against method, path, and summary); press `s` to cycle the active server when the spec
-  declares more than one — both are shown in the pane title when applicable
-- **Request Builder** — one row per parameter (path/query/header/cookie) for the selected
-  operation, plus a trailing "Body" row if the operation accepts a request body; select a
-  row and press `Enter` to type its value. Required parameters are labeled accordingly,
-  and sending is blocked with a message in Response Viewer if any are left empty. The
-  Body row shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
-  value for it. Below the rows, a live `curl`-equivalent preview shows exactly what would
-  be sent — it updates as you type, even before committing a field with `Enter`,
-  reflecting in-progress edits in both this pane and Auth Config
+  `description`). The pane title shows the spec's title/version, the active server (when
+  the spec declares more than one) and the current filter text (when set). Press `/` to
+  filter the list live (case-insensitive substring match against method, path, and
+  summary); press `s` to cycle the active server
 - **Auth Config** — one row per security scheme declared in the spec's
   `components.securitySchemes`; select a row and press `Enter` to type its credential.
   API Key (header, query, or cookie location) and HTTP Bearer schemes take a single
@@ -104,6 +102,15 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
   (hinted in the row text) — OAuth2's token is fetched and cached automatically at
   send time. OpenID Connect and other OAuth2 flows are shown but marked
   "(not editable yet)" — see Known limitations
+- **Request Builder** — one row per parameter (path/query/header/cookie) for the selected
+  operation, plus a trailing "Body" row if the operation accepts a request body; select a
+  row and press `Enter` to type its value. Required parameters are labeled accordingly,
+  and sending is blocked with a message in Response Viewer if any are left empty. The
+  Body row shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
+  value for it
+- **Curl Preview** — a read-only pane showing exactly what would be sent as a
+  `curl`-equivalent command; it updates as you type, even before committing a field with
+  `Enter`, reflecting in-progress edits in both Request Builder and Auth Config
 - **Response Viewer** — status, headers, and body of the last request sent. JSON bodies
   (response, and the request body shown in the curl preview) are pretty-printed; long
   lines soft-wrap within the pane instead of being cut off
