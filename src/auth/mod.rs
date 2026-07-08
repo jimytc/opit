@@ -33,11 +33,14 @@ pub fn apply(request: &mut HttpRequest, credential: &Credential) {
             location,
             param_name,
             value,
-        } => {
-            if location == "header" {
-                request.headers.push((param_name.clone(), value.clone()));
+        } => match location.as_str() {
+            "header" => request.headers.push((param_name.clone(), value.clone())),
+            "query" => crate::request::append_query_param(&mut request.url, param_name, value),
+            "cookie" => {
+                crate::request::append_cookie_header(&mut request.headers, param_name, value)
             }
-        }
+            _ => {}
+        },
         Credential::Bearer { token } => {
             request
                 .headers
