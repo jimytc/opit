@@ -89,12 +89,15 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
   Auth Config
 - **Auth Config** — one row per security scheme declared in the spec's
   `components.securitySchemes`; select a row and press `Enter` to type its credential.
-  API Key and HTTP Bearer schemes take a single value; HTTP Basic takes `user:pass`
-  (hinted in the row text). OAuth2 and OpenID Connect schemes are shown but marked
+  API Key (header, query, or cookie location) and HTTP Bearer schemes take a single
+  value; HTTP Basic and OAuth2 client_credentials (when the spec declares a
+  `clientCredentials` flow) take `user:pass`/`client_id:client_secret` respectively
+  (hinted in the row text) — OAuth2's token is fetched and cached automatically at
+  send time. OpenID Connect and other OAuth2 flows are shown but marked
   "(not editable yet)" — see Known limitations
-- **Response Viewer** — status and body of the last request sent. JSON bodies (response,
-  and the request body shown in the curl preview) are pretty-printed; long lines
-  soft-wrap within the pane instead of being cut off
+- **Response Viewer** — status, headers, and body of the last request sent. JSON bodies
+  (response, and the request body shown in the curl preview) are pretty-printed; long
+  lines soft-wrap within the pane instead of being cut off
 
 The base URL used for requests is the first entry in the spec's top-level `servers` array.
 Switching the selected operation in Endpoints clears any in-progress Request Builder
@@ -104,13 +107,14 @@ any `--bearer-token`/`--header` CLI flags when sending.
 
 ## Known limitations
 
-- OAuth2 client_credentials auth is implemented and unit-tested (`auth::oauth2::TokenCache`)
-  but not yet wired into the live-send path, and isn't interactively configurable in the
-  Auth Config pane — only API Key, HTTP Bearer, and HTTP Basic credentials (entered
-  interactively or via `--bearer-token`/`--header`) are currently applied to outgoing
-  requests.
+- OAuth2 flows other than `clientCredentials` (authorization code, implicit, password)
+  and OpenID Connect discovery are not supported — those schemes are shown in Auth
+  Config but marked "(not editable yet)".
 - The curl preview does not shell-escape header/body values — a value containing a
   single quote (`'`) will produce a command that isn't directly copy-paste-safe.
+- The curl preview can't show OAuth2 client_credentials auth before you send — fetching
+  a real token requires a network call, which only happens once you press `Enter` on
+  Endpoints, not on every keystroke.
 
 ## Development
 
