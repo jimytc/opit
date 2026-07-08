@@ -251,3 +251,69 @@ fn reset_clears_inputs_editing_buffer_and_selected_row() {
     assert_eq!(editor.editing_buffer(), None);
     assert!(editor.inputs().is_empty());
 }
+
+#[test]
+fn inputs_with_live_edit_matches_inputs_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(2);
+    editor.start_editing();
+    for c in "committed".chars() {
+        editor.push_char(c);
+    }
+    editor.commit();
+
+    let inputs_with_live_edit = editor.inputs_with_live_edit();
+
+    assert_eq!(inputs_with_live_edit, editor.inputs().clone());
+    assert_eq!(inputs_with_live_edit.len(), 1);
+    assert_eq!(
+        inputs_with_live_edit.get(&0),
+        Some(&"committed".to_string())
+    );
+}
+
+#[test]
+fn inputs_with_live_edit_includes_uncommitted_value_for_empty_selected_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    editor.push_char('a');
+    editor.push_char('b');
+
+    assert_eq!(editor.editing_buffer(), Some("ab"));
+    assert!(editor.inputs().is_empty());
+
+    let inputs_with_live_edit = editor.inputs_with_live_edit();
+
+    assert_eq!(inputs_with_live_edit.len(), 1);
+    assert_eq!(inputs_with_live_edit.get(&0), Some(&"ab".to_string()));
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn inputs_with_live_edit_uses_uncommitted_value_over_committed_value() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    editor.push_char('o');
+    editor.push_char('l');
+    editor.push_char('d');
+    editor.commit();
+
+    editor.start_editing();
+    editor.pop_char();
+    editor.pop_char();
+    editor.pop_char();
+    editor.push_char('n');
+    editor.push_char('e');
+    editor.push_char('w');
+
+    assert_eq!(editor.editing_buffer(), Some("new"));
+    assert_eq!(editor.inputs().get(&0), Some(&"old".to_string()));
+
+    let inputs_with_live_edit = editor.inputs_with_live_edit();
+
+    assert_eq!(inputs_with_live_edit.len(), 1);
+    assert_eq!(inputs_with_live_edit.get(&0), Some(&"new".to_string()));
+    assert_eq!(editor.inputs().get(&0), Some(&"old".to_string()));
+}
