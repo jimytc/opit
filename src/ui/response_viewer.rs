@@ -1,14 +1,15 @@
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::request::HttpResponse;
+use crate::request::{pretty_print_if_json, HttpResponse};
 
 pub fn widget(response: Option<&HttpResponse>) -> Paragraph<'static> {
     let Some(response) = response else {
         return Paragraph::new("No response yet");
     };
 
+    let pretty_body = pretty_print_if_json(&response.body);
     let mut lines = vec![format!("Status: {}", response.status)];
-    lines.extend(response.body.lines().map(str::to_string));
+    lines.extend(pretty_body.lines().map(str::to_string));
 
-    Paragraph::new(lines.join("\n"))
+    Paragraph::new(lines.join("\n")).wrap(Wrap { trim: false })
 }
