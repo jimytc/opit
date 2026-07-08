@@ -176,8 +176,8 @@ fn endpoint_list_applies_reversed_highlight_style_to_selected_operation_row_only
 fn endpoint_list_groups_operations_by_first_tag_in_first_appearance_order() {
     let operations = vec![
         operation("/zebra/one", "GET", None, vec!["Zebra"]),
-        operation("/apple/one", "GET", None, vec!["Apple"]),
         operation("/zebra/two", "POST", None, vec!["Zebra"]),
+        operation("/apple/one", "GET", None, vec!["Apple"]),
     ];
     let filtered = operation_refs(&operations);
 
