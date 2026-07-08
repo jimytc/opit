@@ -45,6 +45,38 @@ fn response_viewer_renders_status_and_body_when_response_exists() {
 }
 
 #[test]
+fn response_viewer_renders_headers_between_status_and_body() {
+    let response = HttpResponse {
+        status: 200,
+        headers: vec![
+            ("Content-Type".to_string(), "application/json".to_string()),
+            ("X-Request-Id".to_string(), "abc123".to_string()),
+        ],
+        body: "{\"ok\":true}".to_string(),
+    };
+
+    let widget = openapi_terminal_app::ui::response_viewer::widget(Some(&response));
+    let area = Rect::new(0, 0, 40, 8);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let pretty_body = pretty_print_if_json("{\"ok\":true}");
+    let first_body_line = pretty_body.lines().next().unwrap();
+    let line_0 = row_text(&buffer, area, 0);
+    let line_1 = row_text(&buffer, area, 1);
+    let line_2 = row_text(&buffer, area, 2);
+    let line_3 = row_text(&buffer, area, 3);
+    let line_4 = row_text(&buffer, area, 4);
+
+    assert_eq!(line_0.trim_end(), "Status: 200");
+    assert_eq!(line_1.trim_end(), "Content-Type: application/json");
+    assert_eq!(line_2.trim_end(), "X-Request-Id: abc123");
+    assert_eq!(line_3.trim_end(), "");
+    assert_eq!(line_4.trim_end(), first_body_line);
+}
+
+#[test]
 fn response_viewer_renders_non_json_body_unchanged() {
     let response = HttpResponse {
         status: 200,
