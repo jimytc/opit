@@ -27,6 +27,11 @@ pub enum Credential {
     },
 }
 
+pub fn split_credential_pair(raw: &str) -> (String, String) {
+    let (first, second) = raw.split_once(':').unwrap_or((raw, ""));
+    (first.to_string(), second.to_string())
+}
+
 pub fn apply(request: &mut HttpRequest, credential: &Credential) {
     match credential {
         Credential::ApiKey {
@@ -86,12 +91,14 @@ pub fn credentials_from_inputs(
                     Some(Credential::Bearer { token: raw.clone() })
                 }
                 SecuritySchemeKind::Http { scheme } if scheme == "basic" => {
-                    let (username, password) = raw.split_once(':').unwrap_or((raw.as_str(), ""));
-                    Some(Credential::Basic {
-                        username: username.to_string(),
-                        password: password.to_string(),
-                    })
+                    let (username, password) = split_credential_pair(raw);
+                    Some(Credential::Basic { username, password })
                 }
+                // OAuth2 is intentionally never resolved here: this function is
+                // sync and used by the per-frame live preview, but a real
+                // client_credentials token fetch requires an async network
+                // call. See auth::oauth2::resolve_oauth2_credentials for the
+                // real (send-time-only) resolution path.
                 _ => None,
             }
         })
