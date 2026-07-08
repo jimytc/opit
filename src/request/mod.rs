@@ -55,6 +55,19 @@ pub fn build(
     }
 }
 
+pub fn append_cookie_header(headers: &mut Vec<(String, String)>, name: &str, value: &str) {
+    if let Some(existing) = headers.iter_mut().find(|(key, _)| key == "Cookie") {
+        existing.1.push_str(&format!("; {name}={value}"));
+    } else {
+        headers.push(("Cookie".to_string(), format!("{name}={value}")));
+    }
+}
+
+pub fn append_query_param(url: &mut String, name: &str, value: &str) {
+    url.push(if url.contains('?') { '&' } else { '?' });
+    url.push_str(&format!("{name}={value}"));
+}
+
 pub fn param_values_from_inputs(
     operation: &Operation,
     inputs: &HashMap<usize, String>,
