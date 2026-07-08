@@ -83,6 +83,9 @@ impl Spec {
                         request_body_media_type: operation::request_body_media_type_from(
                             operation,
                         ),
+                        summary: operation::summary_from(operation),
+                        request_body_example: None,
+                        tags: operation.tags.clone(),
                     });
                 }
             }

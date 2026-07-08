@@ -4,6 +4,9 @@ pub struct Operation {
     pub parameters: Vec<Parameter>,
     pub has_request_body: bool,
     pub request_body_media_type: Option<String>,
+    pub summary: Option<String>,
+    pub request_body_example: Option<String>,
+    pub tags: Vec<String>,
 }
 
 pub(super) fn request_body_media_type_from(operation: &openapiv3::Operation) -> Option<String> {
@@ -12,6 +15,13 @@ pub(super) fn request_body_media_type_from(operation: &openapiv3::Operation) -> 
         .as_ref()
         .and_then(|body| body.as_item())
         .and_then(|body| body.content.keys().next().cloned())
+}
+
+pub(super) fn summary_from(operation: &openapiv3::Operation) -> Option<String> {
+    operation
+        .summary
+        .clone()
+        .or_else(|| operation.description.clone())
 }
 
 pub struct Parameter {
