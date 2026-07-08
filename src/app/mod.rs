@@ -6,10 +6,11 @@ mod pane_editor;
 
 pub use pane_editor::PaneEditor;
 
-const PANE_CYCLE: [Pane; 4] = [
+const PANE_CYCLE: [Pane; 5] = [
     Pane::EndpointList,
-    Pane::RequestBuilder,
     Pane::AuthConfig,
+    Pane::RequestBuilder,
+    Pane::CurlPreview,
     Pane::ResponseViewer,
 ];
 
@@ -18,6 +19,7 @@ pub enum Pane {
     EndpointList,
     RequestBuilder,
     AuthConfig,
+    CurlPreview,
     ResponseViewer,
 }
 
@@ -84,7 +86,7 @@ impl AppState {
             Pane::RequestBuilder => self.request_builder.editing_buffer().is_some(),
             Pane::AuthConfig => self.auth_config.editing_buffer().is_some(),
             Pane::EndpointList => self.filtering,
-            Pane::ResponseViewer => false,
+            Pane::CurlPreview | Pane::ResponseViewer => false,
         }
     }
 
@@ -95,7 +97,7 @@ impl AppState {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
                 Pane::RequestBuilder => Self::handle_editor_key(&mut self.request_builder, key.code),
                 Pane::AuthConfig => Self::handle_editor_key(&mut self.auth_config, key.code),
-                Pane::ResponseViewer => {}
+                Pane::CurlPreview | Pane::ResponseViewer => {}
             },
         }
     }
