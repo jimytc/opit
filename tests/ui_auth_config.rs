@@ -192,7 +192,7 @@ fn auth_config_renders_oauth2_client_credentials_hint_when_token_url_present() {
     }];
 
     let widget = openapi_terminal_app::ui::auth_config::widget(&schemes, 0, None);
-    let area = Rect::new(0, 0, 70, 5);
+    let area = Rect::new(0, 0, 80, 5);
     let mut buffer = Buffer::empty(area);
 
     Widget::render(widget, area, &mut buffer);
@@ -218,7 +218,7 @@ fn auth_config_shows_raw_buffer_while_editing_oauth2_with_token_url() {
 
     let widget =
         openapi_terminal_app::ui::auth_config::widget(&schemes, 0, Some("client-1:secret-1"));
-    let area = Rect::new(0, 0, 70, 5);
+    let area = Rect::new(0, 0, 80, 5);
     let mut buffer = Buffer::empty(area);
 
     Widget::render(widget, area, &mut buffer);
