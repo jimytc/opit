@@ -145,7 +145,7 @@ fn non_editable_auth_rows(security_schemes: &[SecurityScheme]) -> HashSet<usize>
         .filter_map(|(index, scheme)| {
             matches!(
                 scheme.kind,
-                SecuritySchemeKind::OAuth2 { .. } | SecuritySchemeKind::OpenIdConnect
+                SecuritySchemeKind::OAuth2 { token_url: None } | SecuritySchemeKind::OpenIdConnect
             )
             .then_some(index)
         })
