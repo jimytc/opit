@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use serde::Deserialize;
 use thiserror::Error;
 
+use crate::auth::{split_credential_pair, Credential};
 use crate::request::{HttpClient, HttpError, HttpRequest};
 use crate::spec::{SecurityScheme, SecuritySchemeKind};
 
@@ -106,4 +107,35 @@ pub fn build_token_caches(schemes: &[SecurityScheme]) -> HashMap<usize, TokenCac
                 .then(|| (index, TokenCache::new()))
         })
         .collect()
+}
+
+pub async fn resolve_oauth2_credentials(
+    schemes: &[SecurityScheme],
+    inputs: &HashMap<usize, String>,
+    token_caches: &HashMap<usize, TokenCache>,
+    http: &dyn HttpClient,
+    clock: &dyn Clock,
+) -> Result<Vec<Credential>, AuthError> {
+    let mut credentials = Vec::new();
+    for (index, scheme) in schemes.iter().enumerate() {
+        let SecuritySchemeKind::OAuth2 {
+            token_url: Some(token_url),
+        } = &scheme.kind
+        else {
+            continue;
+        };
+        let Some(raw) = inputs.get(&index) else {
+            continue;
+        };
+
+        let (client_id, client_secret) = split_credential_pair(raw);
+        let cache = token_caches
+            .get(&index)
+            .expect("token cache exists for every OAuth2-with-token_url scheme");
+        let token = cache
+            .get_or_fetch(http, clock, token_url, &client_id, &client_secret)
+            .await?;
+        credentials.push(Credential::Bearer { token });
+    }
+    Ok(credentials)
 }
