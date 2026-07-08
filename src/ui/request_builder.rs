@@ -5,14 +5,14 @@ use crate::spec::Operation;
 
 enum Row<'a> {
     Parameter(&'a crate::spec::Parameter),
-    Body,
+    Body { example: Option<&'a str>, committed: bool },
 }
 
 impl Row<'_> {
     fn label(&self) -> &str {
         match self {
             Row::Parameter(parameter) => &parameter.name,
-            Row::Body => "Body",
+            Row::Body { .. } => "Body",
         }
     }
 
@@ -29,19 +29,31 @@ impl Row<'_> {
                     parameter.name, parameter.location, requiredness
                 )
             }
-            Row::Body => "Body".to_string(),
+            Row::Body {
+                example: Some(example),
+                committed: false,
+            } => format!("Body — e.g. {example}"),
+            Row::Body { .. } => "Body".to_string(),
         }
     }
 }
 
-pub fn widget(operation: Option<&Operation>, selected_row: usize, editing: Option<&str>) -> List<'static> {
+pub fn widget(
+    operation: Option<&Operation>,
+    selected_row: usize,
+    editing: Option<&str>,
+    body_committed: bool,
+) -> List<'static> {
     let Some(operation) = operation else {
         return List::new(vec![ListItem::new("No operation selected")]);
     };
 
     let mut rows: Vec<Row> = operation.parameters.iter().map(Row::Parameter).collect();
     if operation.has_request_body {
-        rows.push(Row::Body);
+        rows.push(Row::Body {
+            example: operation.request_body_example.as_deref(),
+            committed: body_committed,
+        });
     }
 
     if rows.is_empty() {

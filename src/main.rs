@@ -255,11 +255,19 @@ fn draw(
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(3), Constraint::Percentage(40)])
         .split(request_builder_inner);
+    let body_committed = selected_operation
+        .map(|operation| {
+            app.request_builder
+                .inputs()
+                .contains_key(&operation.parameters.len())
+        })
+        .unwrap_or(false);
     frame.render_widget(
         request_builder::widget(
             selected_operation,
             app.request_builder.selected_row(),
             app.request_builder.editing_buffer(),
+            body_committed,
         ),
         request_builder_sections[0],
     );

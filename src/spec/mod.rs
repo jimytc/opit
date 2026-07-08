@@ -92,7 +92,7 @@ impl Spec {
                             operation,
                         ),
                         summary: operation::summary_from(operation),
-                        request_body_example: None,
+                        request_body_example: operation::request_body_example_from(operation),
                         tags: operation.tags.clone(),
                     });
                 }
