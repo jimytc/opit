@@ -1,14 +1,9 @@
 use openapi_terminal_app::spec::{Operation, Parameter};
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Modifier,
-    widgets::Widget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Modifier, widgets::Widget};
 
 #[test]
 fn request_builder_without_operation_renders_no_operation_selected() {
-    let widget = openapi_terminal_app::ui::request_builder::widget(None, 0, None);
+    let widget = openapi_terminal_app::ui::request_builder::widget(None, 0, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -35,7 +30,8 @@ fn request_builder_with_no_parameters_renders_no_parameters() {
         tags: vec![],
     };
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -77,7 +73,8 @@ fn two_parameter_operation() -> Operation {
 fn request_builder_renders_required_and_optional_parameters() {
     let operation = two_parameter_operation();
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -100,7 +97,8 @@ fn request_builder_renders_required_and_optional_parameters() {
 fn request_builder_highlights_selected_row_zero() {
     let operation = two_parameter_operation();
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -120,7 +118,8 @@ fn request_builder_highlights_selected_row_zero() {
 fn request_builder_highlight_follows_selected_row() {
     let operation = two_parameter_operation();
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 1, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 1, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -141,7 +140,7 @@ fn request_builder_shows_inline_editing_buffer_only_for_selected_row() {
     let operation = two_parameter_operation();
 
     let widget =
-        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, Some("123"));
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, Some("123"), false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -173,7 +172,8 @@ fn request_builder_with_only_request_body_renders_body_row() {
         tags: vec![],
     };
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -204,6 +204,7 @@ fn request_builder_shows_inline_editing_buffer_for_body_row() {
         Some(&operation),
         0,
         Some("{\"name\":\"fido\"}"),
+        false,
     );
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
@@ -239,7 +240,8 @@ fn request_builder_body_row_follows_parameters() {
         tags: vec![],
     };
 
-    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 1, None);
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 1, None, false);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
 
@@ -263,6 +265,133 @@ fn request_builder_body_row_follows_parameters() {
     assert!(
         row_has_reversed_modifier(&buffer, area, 1),
         "expected row 1 to have REVERSED highlight style"
+    );
+}
+
+#[test]
+fn request_builder_shows_body_example_hint_before_body_is_committed() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: Some("{\"name\":\"\"}".to_string()),
+        tags: vec![],
+    };
+
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
+    let area = Rect::new(0, 0, 80, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains("Body — e.g. {\"name\":\"\"}"),
+        "expected row 0 to contain the body example hint, got {line_0:?}"
+    );
+}
+
+#[test]
+fn request_builder_keeps_plain_body_text_after_body_is_committed() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: Some("{\"name\":\"\"}".to_string()),
+        tags: vec![],
+    };
+
+    let widget = openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, true);
+    let area = Rect::new(0, 0, 80, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains("Body"),
+        "expected row 0 to contain plain body text, got {line_0:?}"
+    );
+    assert!(
+        !line_0.contains("e.g."),
+        "expected committed body row to omit example hint, got {line_0:?}"
+    );
+}
+
+#[test]
+fn request_builder_keeps_plain_body_text_when_no_example_exists() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
+    };
+
+    let widget =
+        openapi_terminal_app::ui::request_builder::widget(Some(&operation), 0, None, false);
+    let area = Rect::new(0, 0, 80, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains("Body"),
+        "expected row 0 to contain plain body text, got {line_0:?}"
+    );
+    assert!(
+        !line_0.contains("e.g."),
+        "expected body row without an example to omit hint text, got {line_0:?}"
+    );
+}
+
+#[test]
+fn request_builder_body_example_hint_does_not_replace_inline_editing_buffer() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+        summary: None,
+        request_body_example: Some("{\"name\":\"\"}".to_string()),
+        tags: vec![],
+    };
+
+    let widget = openapi_terminal_app::ui::request_builder::widget(
+        Some(&operation),
+        0,
+        Some("{\"name\":\"fido\"}"),
+        false,
+    );
+    let area = Rect::new(0, 0, 80, 5);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let line_0 = row_text(&buffer, area, 0);
+
+    assert!(
+        line_0.contains("Body: {\"name\":\"fido\"}"),
+        "expected row 0 to contain the body editing buffer, got {line_0:?}"
+    );
+    assert!(
+        !line_0.contains("e.g."),
+        "expected editing body row to omit example hint, got {line_0:?}"
     );
 }
 
