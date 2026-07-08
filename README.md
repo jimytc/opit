@@ -83,13 +83,18 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
   row is highlighted
 - **Request Builder** — one row per parameter (path/query/header) for the selected
   operation, plus a trailing "Body" row if the operation accepts a request body; select a
-  row and press `Enter` to type its value
+  row and press `Enter` to type its value. Below the rows, a live `curl`-equivalent
+  preview shows exactly what would be sent — it updates as you type, even before
+  committing a field with `Enter`, reflecting in-progress edits in both this pane and
+  Auth Config
 - **Auth Config** — one row per security scheme declared in the spec's
   `components.securitySchemes`; select a row and press `Enter` to type its credential.
   API Key and HTTP Bearer schemes take a single value; HTTP Basic takes `user:pass`
   (hinted in the row text). OAuth2 and OpenID Connect schemes are shown but marked
   "(not editable yet)" — see Known limitations
-- **Response Viewer** — status and body of the last request sent
+- **Response Viewer** — status and body of the last request sent. JSON bodies (response,
+  and the request body shown in the curl preview) are pretty-printed; long lines
+  soft-wrap within the pane instead of being cut off
 
 The base URL used for requests is the first entry in the spec's top-level `servers` array.
 Switching the selected operation in Endpoints clears any in-progress Request Builder
@@ -104,6 +109,8 @@ any `--bearer-token`/`--header` CLI flags when sending.
   Auth Config pane — only API Key, HTTP Bearer, and HTTP Basic credentials (entered
   interactively or via `--bearer-token`/`--header`) are currently applied to outgoing
   requests.
+- The curl preview does not shell-escape header/body values — a value containing a
+  single quote (`'`) will produce a command that isn't directly copy-paste-safe.
 
 ## Development
 
