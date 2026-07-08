@@ -10,7 +10,7 @@ fn static_text(scheme: &SecurityScheme) -> String {
             "http (basic) — enter as user:pass".to_string()
         }
         SecuritySchemeKind::Http { scheme } => format!("http ({scheme})"),
-        SecuritySchemeKind::OAuth2 => "oauth2 (not editable yet)".to_string(),
+        SecuritySchemeKind::OAuth2 { .. } => "oauth2 (not editable yet)".to_string(),
         SecuritySchemeKind::OpenIdConnect => "openIdConnect (not editable yet)".to_string(),
     };
     format!("{}: {}", scheme.name, description)
