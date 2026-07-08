@@ -141,11 +141,76 @@ fn start_editing_is_no_op_when_selected_row_is_not_editable() {
 }
 
 #[test]
+fn is_editing_multiline_row_is_false_on_fresh_editor() {
+    let editor = PaneEditor::new();
+
+    assert!(!editor.is_editing_multiline_row());
+}
+
+#[test]
+fn is_editing_multiline_row_is_true_when_editing_selected_multiline_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_multiline_rows(HashSet::from([0]));
+    editor.set_row_count(2);
+
+    editor.start_editing();
+
+    assert!(editor.is_editing_multiline_row());
+}
+
+#[test]
+fn is_editing_multiline_row_is_false_when_editing_non_multiline_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_multiline_rows(HashSet::from([0]));
+    editor.set_row_count(2);
+    editor.move_down();
+
+    editor.start_editing();
+
+    assert_eq!(editor.selected_row(), 1);
+    assert!(!editor.is_editing_multiline_row());
+    assert_eq!(editor.editing_buffer(), Some(""));
+}
+
+#[test]
+fn is_editing_multiline_row_is_false_when_multiline_row_selected_but_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_multiline_rows(HashSet::from([0]));
+    editor.set_row_count(2);
+
+    assert_eq!(editor.selected_row(), 0);
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(!editor.is_editing_multiline_row());
+}
+
+#[test]
 fn push_char_is_no_op_when_not_editing() {
     let mut editor = PaneEditor::new();
     editor.set_row_count(1);
 
     editor.push_char('x');
+
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(editor.inputs().is_empty());
+}
+
+#[test]
+fn push_str_appends_full_string_including_embedded_newline() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+
+    editor.push_str("line one\nline two");
+
+    assert_eq!(editor.editing_buffer(), Some("line one\nline two"));
+}
+
+#[test]
+fn push_str_is_no_op_when_not_editing() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+
+    editor.push_str("ignored");
 
     assert_eq!(editor.editing_buffer(), None);
     assert!(editor.inputs().is_empty());

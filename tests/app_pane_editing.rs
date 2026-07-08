@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use openapi_terminal_app::app::{AppState, Pane};
 
@@ -11,6 +13,10 @@ fn tab() -> KeyEvent {
 
 fn backtab() -> KeyEvent {
     KeyEvent::new(KeyCode::BackTab, KeyModifiers::SHIFT)
+}
+
+fn ctrl_s() -> KeyEvent {
+    KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL)
 }
 
 fn commit_request_builder_input(state: &mut AppState, value: &str) {
@@ -77,6 +83,101 @@ fn request_builder_char_backspace_and_enter_commit_through_handle_key() {
 }
 
 #[test]
+fn request_builder_enter_inserts_newline_when_editing_multiline_row() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+    state.request_builder.set_multiline_rows(HashSet::from([0]));
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+
+    state.handle_key(key(KeyCode::Char('a')));
+    state.handle_key(key(KeyCode::Char('b')));
+    state.handle_key(key(KeyCode::Enter));
+    state.handle_key(key(KeyCode::Char('c')));
+    state.handle_key(key(KeyCode::Char('d')));
+
+    assert!(state.is_editing());
+    assert_eq!(state.request_builder.editing_buffer(), Some("ab\ncd"));
+    assert!(state.request_builder.inputs().is_empty());
+}
+
+#[test]
+fn request_builder_enter_commits_non_multiline_row() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+
+    state.handle_key(key(KeyCode::Char('a')));
+    state.handle_key(key(KeyCode::Enter));
+
+    assert!(!state.is_editing());
+    assert_eq!(
+        state.request_builder.inputs().get(&0),
+        Some(&"a".to_string())
+    );
+}
+
+#[test]
+fn ctrl_s_commits_multiline_request_builder_buffer() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+    state.request_builder.set_multiline_rows(HashSet::from([0]));
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+    state.handle_key(key(KeyCode::Char('a')));
+    state.handle_key(key(KeyCode::Enter));
+    state.handle_key(key(KeyCode::Char('b')));
+
+    state.handle_key(ctrl_s());
+
+    assert!(!state.is_editing());
+    assert_eq!(
+        state.request_builder.inputs().get(&0),
+        Some(&"a\nb".to_string())
+    );
+    assert_eq!(state.request_builder.editing_buffer(), None);
+}
+
+#[test]
+fn ctrl_s_commits_auth_config_buffer() {
+    let mut state = AppState::new();
+    state.auth_config.set_row_count(1);
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+    state.handle_key(key(KeyCode::Char('s')));
+    state.handle_key(key(KeyCode::Char('e')));
+    state.handle_key(key(KeyCode::Char('c')));
+
+    state.handle_key(ctrl_s());
+
+    assert!(!state.is_editing());
+    assert_eq!(
+        state.auth_config.inputs().get(&0),
+        Some(&"sec".to_string())
+    );
+    assert_eq!(state.auth_config.editing_buffer(), None);
+}
+
+#[test]
+fn ctrl_s_is_no_op_when_not_editing() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+
+    state.handle_key(ctrl_s());
+
+    assert!(!state.is_editing());
+    assert_eq!(state.focused, Pane::EndpointList);
+    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.auth_config.inputs().is_empty());
+    assert_eq!(state.auth_config.editing_buffer(), None);
+}
+
+#[test]
 fn request_builder_esc_cancels_without_committing() {
     let mut state = AppState::new();
     state.request_builder.set_row_count(1);
@@ -132,6 +233,62 @@ fn auth_config_routes_editing_keys_without_affecting_request_builder() {
     state.handle_key(key(KeyCode::Enter));
 
     assert_eq!(state.auth_config.inputs().get(&0), Some(&"z".to_string()));
+    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(state.request_builder.editing_buffer(), None);
+}
+
+#[test]
+fn handle_paste_appends_to_editing_request_builder() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+
+    state.handle_paste("pasted\ntext");
+
+    assert_eq!(state.request_builder.editing_buffer(), Some("pasted\ntext"));
+    assert!(state.request_builder.inputs().is_empty());
+}
+
+#[test]
+fn handle_paste_appends_to_editing_auth_config_without_affecting_request_builder() {
+    let mut state = AppState::new();
+    state.auth_config.set_row_count(1);
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+
+    state.handle_paste("secret");
+
+    assert_eq!(state.auth_config.editing_buffer(), Some("secret"));
+    assert!(state.auth_config.inputs().is_empty());
+    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(state.request_builder.editing_buffer(), None);
+}
+
+#[test]
+fn handle_paste_is_no_op_when_endpoint_list_is_focused() {
+    let mut state = AppState::new();
+
+    state.handle_paste("ignored");
+
+    assert_eq!(state.focused, Pane::EndpointList);
+    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.auth_config.inputs().is_empty());
+    assert_eq!(state.auth_config.editing_buffer(), None);
+}
+
+#[test]
+fn handle_paste_is_no_op_when_request_builder_is_focused_but_not_editing() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+    state.handle_key(tab());
+    state.handle_key(tab());
+
+    state.handle_paste("ignored");
+
+    assert_eq!(state.focused, Pane::RequestBuilder);
     assert!(state.request_builder.inputs().is_empty());
     assert_eq!(state.request_builder.editing_buffer(), None);
 }
