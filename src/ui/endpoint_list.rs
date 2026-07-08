@@ -4,6 +4,26 @@ use ratatui::widgets::{List, ListItem};
 
 use crate::spec::Operation;
 
+pub fn filtered_operations<'a>(operations: &'a [Operation], filter: &str) -> Vec<&'a Operation> {
+    if filter.is_empty() {
+        return operations.iter().collect();
+    }
+    let filter = filter.to_lowercase();
+    operations
+        .iter()
+        .filter(|operation| {
+            format!(
+                "{} {} {}",
+                operation.method,
+                operation.path,
+                operation.summary.as_deref().unwrap_or("")
+            )
+            .to_lowercase()
+            .contains(&filter)
+        })
+        .collect()
+}
+
 pub fn widget(operations: &[Operation]) -> List<'static> {
     let items: Vec<ListItem> = operations
         .iter()
