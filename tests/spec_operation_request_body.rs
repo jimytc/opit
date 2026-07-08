@@ -48,3 +48,75 @@ fn operations_report_whether_request_body_is_present() {
     assert!(post_operation.has_request_body);
     assert!(!get_operation.has_request_body);
 }
+
+#[test]
+fn post_operation_reports_request_body_media_type() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "post": {
+            "operationId": "createPet",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "POST")
+        .expect("POST /pets operation exists");
+
+    assert_eq!(
+        operation.request_body_media_type,
+        Some("application/json".to_string())
+    );
+}
+
+#[test]
+fn get_operation_without_request_body_reports_no_request_body_media_type() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "1.0.0"
+      },
+      "paths": {
+        "/pets": {
+          "get": {
+            "operationId": "listPets",
+            "responses": {}
+          }
+        }
+      }
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).unwrap();
+    let operations = spec.operations();
+    let operation = operations
+        .iter()
+        .find(|operation| operation.path == "/pets" && operation.method == "GET")
+        .expect("GET /pets operation exists");
+
+    assert_eq!(operation.request_body_media_type, None);
+}

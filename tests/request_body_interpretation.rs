@@ -20,6 +20,7 @@ fn operation_with_two_parameters(has_request_body: bool) -> Operation {
             },
         ],
         has_request_body,
+        request_body_media_type: None,
     }
 }
 
@@ -60,6 +61,7 @@ fn uses_row_zero_as_body_row_when_operation_has_no_parameters() {
         method: "POST".to_string(),
         parameters: vec![],
         has_request_body: true,
+        request_body_media_type: None,
     };
     let inputs = HashMap::from([(0, "raw body text".to_string())]);
 

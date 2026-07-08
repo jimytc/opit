@@ -10,6 +10,7 @@ fn get_pets_operation() -> Operation {
         method: "GET".to_string(),
         parameters: vec![],
         has_request_body: false,
+        request_body_media_type: None,
     }
 }
 
@@ -24,6 +25,7 @@ fn build_preview_replaces_path_parameters_from_indexed_inputs() {
             required: true,
         }],
         has_request_body: false,
+        request_body_media_type: None,
     };
     let param_inputs = HashMap::from([(0, "123".to_string())]);
     let auth_inputs = HashMap::new();
@@ -48,6 +50,7 @@ fn build_preview_stores_raw_body_from_body_row() {
         method: "POST".to_string(),
         parameters: vec![],
         has_request_body: true,
+        request_body_media_type: None,
     };
     let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
     let auth_inputs = HashMap::new();
@@ -62,6 +65,58 @@ fn build_preview_stores_raw_body_from_body_row() {
     );
 
     assert_eq!(request.body, Some("{\"name\":\"fido\"}".to_string()));
+}
+
+#[test]
+fn build_preview_adds_content_type_header_when_body_value_is_present() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+    };
+    let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
+
+    let request = build_preview(
+        "https://api.example.com",
+        &operation,
+        &param_inputs,
+        &[],
+        &HashMap::new(),
+        &[],
+    );
+
+    assert!(request.headers.contains(&(
+        "Content-Type".to_string(),
+        "application/json".to_string()
+    )));
+}
+
+#[test]
+fn build_preview_omits_content_type_header_when_body_value_is_absent() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: true,
+        request_body_media_type: Some("application/json".to_string()),
+    };
+    let param_inputs = HashMap::new();
+
+    let request = build_preview(
+        "https://api.example.com",
+        &operation,
+        &param_inputs,
+        &[],
+        &HashMap::new(),
+        &[],
+    );
+
+    assert!(!request
+        .headers
+        .iter()
+        .any(|(name, _value)| name == "Content-Type"));
 }
 
 #[test]

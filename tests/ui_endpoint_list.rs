@@ -14,12 +14,14 @@ fn endpoint_list_renders_method_and_path_for_each_operation() {
             method: "GET".to_string(),
             parameters: vec![],
             has_request_body: false,
+            request_body_media_type: None,
         },
         Operation {
             path: "/pets".to_string(),
             method: "POST".to_string(),
             parameters: vec![],
             has_request_body: false,
+            request_body_media_type: None,
         },
     ];
 
@@ -50,12 +52,14 @@ fn endpoint_list_applies_reversed_highlight_style_to_selected_row_only() {
             method: "GET".to_string(),
             parameters: vec![],
             has_request_body: false,
+            request_body_media_type: None,
         },
         Operation {
             path: "/pets".to_string(),
             method: "POST".to_string(),
             parameters: vec![],
             has_request_body: false,
+            request_body_media_type: None,
         },
     ];
 
