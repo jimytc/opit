@@ -86,3 +86,39 @@ fn servers_returns_empty_vec_when_servers_field_is_missing() {
 
     assert_eq!(spec.servers(), Vec::<String>::new());
 }
+
+#[test]
+fn title_returns_info_title() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "2.1.0"
+      },
+      "paths": {}
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).expect("spec parses");
+
+    assert_eq!(spec.title(), "Pets API".to_string());
+}
+
+#[test]
+fn version_returns_info_version() {
+    let json = r#"
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Pets API",
+        "version": "2.1.0"
+      },
+      "paths": {}
+    }
+    "#;
+
+    let spec = openapi_terminal_app::spec::Spec::from_json_str(json).expect("spec parses");
+
+    assert_eq!(spec.version(), "2.1.0".to_string());
+}
