@@ -72,21 +72,30 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 | `Tab`           | Cycle focus forward through panes (disabled while editing a field)     |
 | `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
 | `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config |
-| `Enter`         | In Endpoints: send the selected operation as a live HTTP request. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing |
-| `Esc`           | Cancel an in-progress edit (or quit, if not currently editing)          |
-| Any character / `Backspace` | While editing a row, types into / erases from that row's value  |
-| `q`             | Quit (only when not currently editing a field)                        |
+| `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
+| `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
+| `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing |
+| `Esc`           | Cancel an in-progress edit, or (while filtering) clear the filter and stop typing — otherwise quit |
+| Any character / `Backspace` | While editing a row or typing a filter, types into / erases from that value |
+| `q`             | Quit (only when not currently editing a field or filtering)           |
 
 ### Panes
 
-- **Endpoints** — list of operations (`METHOD /path`) from the loaded spec; the selected
-  row is highlighted
-- **Request Builder** — one row per parameter (path/query/header) for the selected
+- **Endpoints** — list of operations from the loaded spec, grouped under a header row
+  per first tag (or "Untagged" if an operation has none), in first-appearance order; the
+  selected row is highlighted. Each operation shows `METHOD /path`, plus an indented
+  summary line underneath when the spec provides a `summary` (or falls back to
+  `description`). Press `/` to filter the list live (case-insensitive substring match
+  against method, path, and summary); press `s` to cycle the active server when the spec
+  declares more than one — both are shown in the pane title when applicable
+- **Request Builder** — one row per parameter (path/query/header/cookie) for the selected
   operation, plus a trailing "Body" row if the operation accepts a request body; select a
-  row and press `Enter` to type its value. Below the rows, a live `curl`-equivalent
-  preview shows exactly what would be sent — it updates as you type, even before
-  committing a field with `Enter`, reflecting in-progress edits in both this pane and
-  Auth Config
+  row and press `Enter` to type its value. Required parameters are labeled accordingly,
+  and sending is blocked with a message in Response Viewer if any are left empty. The
+  Body row shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
+  value for it. Below the rows, a live `curl`-equivalent preview shows exactly what would
+  be sent — it updates as you type, even before committing a field with `Enter`,
+  reflecting in-progress edits in both this pane and Auth Config
 - **Auth Config** — one row per security scheme declared in the spec's
   `components.securitySchemes`; select a row and press `Enter` to type its credential.
   API Key (header, query, or cookie location) and HTTP Bearer schemes take a single
@@ -99,11 +108,11 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
   (response, and the request body shown in the curl preview) are pretty-printed; long
   lines soft-wrap within the pane instead of being cut off
 
-The base URL used for requests is the first entry in the spec's top-level `servers` array.
 Switching the selected operation in Endpoints clears any in-progress Request Builder
-values (they're per-operation); Auth Config values persist across operation switches
-(credentials are spec-wide). Credentials/params entered interactively are combined with
-any `--bearer-token`/`--header` CLI flags when sending.
+values (they're per-operation, tracked by method+path so a value never leaks onto the
+wrong operation even as filtering reshuffles the list); Auth Config values persist across
+operation switches (credentials are spec-wide). Credentials/params entered interactively
+are combined with any `--bearer-token`/`--header` CLI flags when sending.
 
 ## Known limitations
 
@@ -115,6 +124,11 @@ any `--bearer-token`/`--header` CLI flags when sending.
 - The curl preview can't show OAuth2 client_credentials auth before you send — fetching
   a real token requires a network call, which only happens once you press `Enter` on
   Endpoints, not on every keystroke.
+- The required-parameter check only covers path/query/header/cookie parameters marked
+  `required` in the spec — it does not check whether a request body itself is required.
+- Generated request body example hints only fill in properties declared inline in the
+  schema; properties defined via `$ref` are skipped, and a request body whose own schema
+  is a top-level `$ref` gets no example hint at all (no cross-schema resolution).
 
 ## Development
 
