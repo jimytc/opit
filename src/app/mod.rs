@@ -25,10 +25,13 @@ pub struct AppState {
     pub focused: Pane,
     pub selected_operation_index: usize,
     pub selected_server_index: usize,
+    pub endpoint_filter: String,
     pub request_builder: PaneEditor,
     pub auth_config: PaneEditor,
     operation_count: usize,
     server_count: usize,
+    filtering: bool,
+    last_selected_identity: Option<(String, String)>,
     last_response: Option<HttpResponse>,
 }
 
@@ -38,20 +41,34 @@ impl AppState {
             focused: Pane::EndpointList,
             selected_operation_index: 0,
             selected_server_index: 0,
+            endpoint_filter: String::new(),
             request_builder: PaneEditor::new(),
             auth_config: PaneEditor::new(),
             operation_count: 0,
             server_count: 0,
+            filtering: false,
+            last_selected_identity: None,
             last_response: None,
         }
     }
 
     pub fn set_operation_count(&mut self, count: usize) {
         self.operation_count = count;
+        if count > 0 && self.selected_operation_index >= count {
+            self.selected_operation_index = count - 1;
+        }
     }
 
     pub fn set_server_count(&mut self, count: usize) {
         self.server_count = count;
+    }
+
+    pub fn sync_selected_operation(&mut self, current_identity: Option<(&str, &str)>) {
+        let current = current_identity.map(|(method, path)| (method.to_string(), path.to_string()));
+        if current != self.last_selected_identity {
+            self.request_builder.reset();
+            self.last_selected_identity = current;
+        }
     }
 
     pub fn set_response(&mut self, response: HttpResponse) {
@@ -66,7 +83,8 @@ impl AppState {
         match self.focused {
             Pane::RequestBuilder => self.request_builder.editing_buffer().is_some(),
             Pane::AuthConfig => self.auth_config.editing_buffer().is_some(),
-            Pane::EndpointList | Pane::ResponseViewer => false,
+            Pane::EndpointList => self.filtering,
+            Pane::ResponseViewer => false,
         }
     }
 
@@ -83,6 +101,22 @@ impl AppState {
     }
 
     fn handle_endpoint_list_key(&mut self, code: KeyCode) {
+        if self.filtering {
+            match code {
+                KeyCode::Char(c) => self.endpoint_filter.push(c),
+                KeyCode::Backspace => {
+                    self.endpoint_filter.pop();
+                }
+                KeyCode::Enter => self.filtering = false,
+                KeyCode::Esc => {
+                    self.filtering = false;
+                    self.endpoint_filter.clear();
+                }
+                _ => {}
+            }
+            return;
+        }
+
         let before = self.selected_operation_index;
         match code {
             KeyCode::Down => {
@@ -100,6 +134,7 @@ impl AppState {
                         (self.selected_server_index + 1) % self.server_count;
                 }
             }
+            KeyCode::Char('/') => self.filtering = true,
             _ => {}
         }
         if self.selected_operation_index != before {
