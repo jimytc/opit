@@ -67,7 +67,7 @@ fn up_and_down_do_not_change_selection_when_endpoint_list_is_not_focused() {
     assert_eq!(state.selected_operation_index, 1);
 
     state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-    assert_eq!(state.focused, Pane::RequestBuilder);
+    assert_eq!(state.focused, Pane::AuthConfig);
 
     state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(state.selected_operation_index, 1);
@@ -107,7 +107,7 @@ fn s_does_not_change_selected_server_index_when_endpoint_list_is_not_focused() {
     assert_eq!(state.selected_server_index, 1);
 
     state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-    assert_eq!(state.focused, Pane::RequestBuilder);
+    assert_eq!(state.focused, Pane::AuthConfig);
 
     state.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
     assert_eq!(state.selected_server_index, 1);

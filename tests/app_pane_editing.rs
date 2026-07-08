@@ -44,6 +44,7 @@ fn enter_starts_editing_request_builder_when_focused() {
     state.request_builder.set_row_count(2);
 
     state.handle_key(tab());
+    state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
     assert_eq!(state.focused, Pane::RequestBuilder);
@@ -55,6 +56,7 @@ fn enter_starts_editing_request_builder_when_focused() {
 fn request_builder_char_backspace_and_enter_commit_through_handle_key() {
     let mut state = AppState::new();
     state.request_builder.set_row_count(2);
+    state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
@@ -79,6 +81,7 @@ fn request_builder_esc_cancels_without_committing() {
     let mut state = AppState::new();
     state.request_builder.set_row_count(1);
     state.handle_key(tab());
+    state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
     state.handle_key(key(KeyCode::Char('x')));
@@ -95,6 +98,7 @@ fn tab_is_no_op_while_editing_request_builder() {
     let mut state = AppState::new();
     state.request_builder.set_row_count(1);
     state.handle_key(tab());
+    state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
     state.handle_key(tab());
@@ -109,7 +113,6 @@ fn tab_is_no_op_while_editing_request_builder() {
 fn auth_config_routes_editing_keys_without_affecting_request_builder() {
     let mut state = AppState::new();
     state.auth_config.set_row_count(1);
-    state.handle_key(tab());
     state.handle_key(tab());
 
     state.handle_key(key(KeyCode::Enter));
@@ -211,6 +214,7 @@ fn response_viewer_ignores_editing_and_navigation_keys() {
     commit_request_builder_input(&mut state, "request");
     commit_auth_config_input(&mut state, "auth");
 
+    state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(tab());
