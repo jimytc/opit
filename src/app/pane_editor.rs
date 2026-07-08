@@ -4,6 +4,7 @@ pub struct PaneEditor {
     selected_row: usize,
     row_count: usize,
     non_editable_rows: HashSet<usize>,
+    multiline_rows: HashSet<usize>,
     inputs: HashMap<usize, String>,
     editing: Option<String>,
 }
@@ -14,6 +15,7 @@ impl PaneEditor {
             selected_row: 0,
             row_count: 0,
             non_editable_rows: HashSet::new(),
+            multiline_rows: HashSet::new(),
             inputs: HashMap::new(),
             editing: None,
         }
@@ -28,6 +30,14 @@ impl PaneEditor {
 
     pub fn set_non_editable_rows(&mut self, rows: HashSet<usize>) {
         self.non_editable_rows = rows;
+    }
+
+    pub fn set_multiline_rows(&mut self, rows: HashSet<usize>) {
+        self.multiline_rows = rows;
+    }
+
+    pub fn is_editing_multiline_row(&self) -> bool {
+        self.editing.is_some() && self.multiline_rows.contains(&self.selected_row)
     }
 
     pub fn selected_row(&self) -> usize {
@@ -81,6 +91,12 @@ impl PaneEditor {
     pub fn push_char(&mut self, c: char) {
         if let Some(buffer) = &mut self.editing {
             buffer.push(c);
+        }
+    }
+
+    pub fn push_str(&mut self, s: &str) {
+        if let Some(buffer) = &mut self.editing {
+            buffer.push_str(s);
         }
     }
 

@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::request::HttpResponse;
 
@@ -95,10 +95,22 @@ impl AppState {
             KeyCode::Tab | KeyCode::BackTab if !self.is_editing() => self.cycle_focus(key.code),
             _ => match self.focused {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
-                Pane::RequestBuilder => Self::handle_editor_key(&mut self.request_builder, key.code),
-                Pane::AuthConfig => Self::handle_editor_key(&mut self.auth_config, key.code),
+                Pane::RequestBuilder => {
+                    Self::handle_editor_key(&mut self.request_builder, key.code, key.modifiers)
+                }
+                Pane::AuthConfig => {
+                    Self::handle_editor_key(&mut self.auth_config, key.code, key.modifiers)
+                }
                 Pane::CurlPreview | Pane::ResponseViewer => {}
             },
+        }
+    }
+
+    pub fn handle_paste(&mut self, text: &str) {
+        match self.focused {
+            Pane::RequestBuilder => self.request_builder.push_str(text),
+            Pane::AuthConfig => self.auth_config.push_str(text),
+            Pane::EndpointList | Pane::CurlPreview | Pane::ResponseViewer => {}
         }
     }
 
@@ -144,13 +156,22 @@ impl AppState {
         }
     }
 
-    fn handle_editor_key(editor: &mut PaneEditor, code: KeyCode) {
+    fn handle_editor_key(editor: &mut PaneEditor, code: KeyCode, modifiers: KeyModifiers) {
         match code {
+            KeyCode::Char('s') if modifiers.contains(KeyModifiers::CONTROL) => {
+                if editor.editing_buffer().is_some() {
+                    editor.commit();
+                }
+            }
             KeyCode::Up => editor.move_up(),
             KeyCode::Down => editor.move_down(),
             KeyCode::Enter => {
                 if editor.editing_buffer().is_some() {
-                    editor.commit();
+                    if editor.is_editing_multiline_row() {
+                        editor.push_char('\n');
+                    } else {
+                        editor.commit();
+                    }
                 } else {
                     editor.start_editing();
                 }
