@@ -71,7 +71,7 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 |-----------------|-------------------------------------------------------------------------|
 | `Tab`           | Cycle focus forward through panes (disabled while editing a field)     |
 | `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
-| `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config |
+| `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config (auto-scrolls to keep the selection visible). In Curl Preview/Response Viewer: scroll the content up/down one line at a time |
 | `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
 | `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
 | `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing — except on the Body row (see below), where Enter inserts a newline instead |
