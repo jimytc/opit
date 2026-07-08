@@ -28,6 +28,40 @@ fn applies_header_api_key_credential() {
 }
 
 #[test]
+fn applies_query_api_key_credential() {
+    let mut request = fresh_request();
+    let credential = Credential::ApiKey {
+        location: "query".to_string(),
+        param_name: "api_key".to_string(),
+        value: "secret123".to_string(),
+    };
+
+    apply(&mut request, &credential);
+
+    assert_eq!(
+        request.url,
+        "https://api.example.com/pets?api_key=secret123"
+    );
+}
+
+#[test]
+fn applies_cookie_api_key_credential() {
+    let mut request = fresh_request();
+    let credential = Credential::ApiKey {
+        location: "cookie".to_string(),
+        param_name: "session_id".to_string(),
+        value: "abc123".to_string(),
+    };
+
+    apply(&mut request, &credential);
+
+    assert_eq!(
+        request.headers,
+        vec![("Cookie".to_string(), "session_id=abc123".to_string())]
+    );
+}
+
+#[test]
 fn applies_bearer_credential() {
     let mut request = fresh_request();
     let credential = Credential::Bearer {
