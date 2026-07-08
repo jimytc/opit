@@ -50,6 +50,14 @@ impl Spec {
         self.inner.servers.first().map(|server| server.url.clone())
     }
 
+    pub fn servers(&self) -> Vec<String> {
+        self.inner
+            .servers
+            .iter()
+            .map(|server| server.url.clone())
+            .collect()
+    }
+
     pub fn security_schemes(&self) -> Vec<SecurityScheme> {
         match &self.inner.components {
             Some(components) => security::security_schemes_from(components),

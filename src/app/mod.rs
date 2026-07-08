@@ -24,9 +24,11 @@ pub enum Pane {
 pub struct AppState {
     pub focused: Pane,
     pub selected_operation_index: usize,
+    pub selected_server_index: usize,
     pub request_builder: PaneEditor,
     pub auth_config: PaneEditor,
     operation_count: usize,
+    server_count: usize,
     last_response: Option<HttpResponse>,
 }
 
@@ -35,15 +37,21 @@ impl AppState {
         Self {
             focused: Pane::EndpointList,
             selected_operation_index: 0,
+            selected_server_index: 0,
             request_builder: PaneEditor::new(),
             auth_config: PaneEditor::new(),
             operation_count: 0,
+            server_count: 0,
             last_response: None,
         }
     }
 
     pub fn set_operation_count(&mut self, count: usize) {
         self.operation_count = count;
+    }
+
+    pub fn set_server_count(&mut self, count: usize) {
+        self.server_count = count;
     }
 
     pub fn set_response(&mut self, response: HttpResponse) {
@@ -85,6 +93,12 @@ impl AppState {
             }
             KeyCode::Up => {
                 self.selected_operation_index = self.selected_operation_index.saturating_sub(1);
+            }
+            KeyCode::Char('s') => {
+                if self.server_count > 0 {
+                    self.selected_server_index =
+                        (self.selected_server_index + 1) % self.server_count;
+                }
             }
             _ => {}
         }

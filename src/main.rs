@@ -21,10 +21,10 @@ async fn main() -> anyhow::Result<()> {
     let spec = Spec::load_from_path(&cli.spec_path)?;
     let operations = spec.operations();
     let security_schemes = spec.security_schemes();
-    let base_url = spec.base_url().unwrap_or_default();
+    let servers = spec.servers();
     let credentials = credentials_from_cli(&cli);
 
-    run_app(&operations, &security_schemes, &base_url, &credentials).await
+    run_app(&operations, &security_schemes, &servers, &credentials).await
 }
 
 fn credentials_from_cli(cli: &Cli) -> Vec<Credential> {
@@ -48,7 +48,7 @@ fn credentials_from_cli(cli: &Cli) -> Vec<Credential> {
 async fn run_app(
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
-    base_url: &str,
+    servers: &[String],
     credentials: &[Credential],
 ) -> anyhow::Result<()> {
     enable_raw_mode()?;
@@ -57,6 +57,7 @@ async fn run_app(
 
     let mut app = AppState::new();
     app.set_operation_count(operations.len());
+    app.set_server_count(servers.len());
     let http_client = ReqwestClient::new();
     let token_caches = build_token_caches(security_schemes);
 
@@ -65,7 +66,7 @@ async fn run_app(
         &mut app,
         operations,
         security_schemes,
-        base_url,
+        servers,
         credentials,
         &http_client,
         &token_caches,
@@ -83,7 +84,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
     app: &mut AppState,
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
-    base_url: &str,
+    servers: &[String],
     cli_credentials: &[Credential],
     http_client: &dyn HttpClient,
     token_caches: &std::collections::HashMap<usize, openapi_terminal_app::auth::oauth2::TokenCache>,
@@ -97,8 +98,12 @@ async fn event_loop<B: ratatui::backend::Backend>(
         app.auth_config.set_row_count(security_schemes.len());
         app.auth_config
             .set_non_editable_rows(non_editable_auth_rows(security_schemes));
+        let base_url = servers
+            .get(app.selected_server_index)
+            .map(String::as_str)
+            .unwrap_or_default();
 
-        terminal.draw(|frame| draw(frame, app, operations, security_schemes, base_url, cli_credentials))?;
+        terminal.draw(|frame| draw(frame, app, operations, security_schemes, base_url, servers, cli_credentials))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -186,6 +191,7 @@ fn draw(
     operations: &[Operation],
     security_schemes: &[SecurityScheme],
     base_url: &str,
+    servers: &[String],
     cli_credentials: &[Credential],
 ) {
     let rows = Layout::default()
@@ -201,8 +207,17 @@ fn draw(
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(rows[1]);
 
+    let endpoint_title = if servers.len() > 1 {
+        format!(
+            "Endpoints — server {}/{} (press 's')",
+            app.selected_server_index + 1,
+            servers.len()
+        )
+    } else {
+        "Endpoints".to_string()
+    };
     let endpoint_block = Block::bordered()
-        .title("Endpoints")
+        .title(endpoint_title)
         .border_style(pane_border_style(app.focused, Pane::EndpointList));
     let mut list_state = ListState::default();
     if !operations.is_empty() {
