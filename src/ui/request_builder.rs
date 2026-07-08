@@ -35,7 +35,10 @@ impl Row<'_> {
             Row::Body {
                 example: Some(example),
                 committed: false,
-            } => format!("Body — e.g. {example}"),
+            } => {
+                let compact_example = example.split_whitespace().collect::<Vec<_>>().join(" ");
+                format!("Body — e.g. {compact_example}")
+            }
             Row::Body { .. } => "Body".to_string(),
         }
     }
