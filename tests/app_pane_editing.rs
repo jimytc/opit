@@ -406,3 +406,49 @@ fn response_viewer_ignores_editing_and_navigation_keys() {
         auth_buffer_before.as_deref()
     );
 }
+
+#[test]
+fn response_viewer_up_and_down_scroll_without_affecting_editable_panes_or_selection() {
+    let mut state = AppState::new();
+    state.set_operation_count(3);
+    commit_request_builder_input(&mut state, "request");
+    commit_auth_config_input(&mut state, "auth");
+
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(tab());
+    assert_eq!(state.focused, Pane::ResponseViewer);
+
+    state.request_builder.start_editing();
+    state.request_builder.push_char('!');
+    state.auth_config.start_editing();
+    state.auth_config.push_char('?');
+
+    let selected_operation_index_before = state.selected_operation_index;
+    let request_inputs_before = state.request_builder.inputs().clone();
+    let request_buffer_before = state.request_builder.editing_buffer().map(str::to_owned);
+    let auth_inputs_before = state.auth_config.inputs().clone();
+    let auth_buffer_before = state.auth_config.editing_buffer().map(str::to_owned);
+
+    state.set_response_viewer_max_scroll(5);
+    state.handle_key(key(KeyCode::Down));
+    state.handle_key(key(KeyCode::Down));
+    state.handle_key(key(KeyCode::Up));
+
+    assert_eq!(state.response_viewer_scroll(), 1);
+    assert_eq!(
+        state.selected_operation_index,
+        selected_operation_index_before
+    );
+    assert_eq!(state.request_builder.inputs(), &request_inputs_before);
+    assert_eq!(
+        state.request_builder.editing_buffer(),
+        request_buffer_before.as_deref()
+    );
+    assert_eq!(state.auth_config.inputs(), &auth_inputs_before);
+    assert_eq!(
+        state.auth_config.editing_buffer(),
+        auth_buffer_before.as_deref()
+    );
+}
