@@ -50,6 +50,14 @@ impl Spec {
         self.inner.servers.first().map(|server| server.url.clone())
     }
 
+    pub fn title(&self) -> String {
+        self.inner.info.title.clone()
+    }
+
+    pub fn version(&self) -> String {
+        self.inner.info.version.clone()
+    }
+
     pub fn servers(&self) -> Vec<String> {
         self.inner
             .servers
