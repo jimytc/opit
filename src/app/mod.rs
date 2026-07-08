@@ -35,6 +35,10 @@ pub struct AppState {
     filtering: bool,
     last_selected_identity: Option<(String, String)>,
     last_response: Option<HttpResponse>,
+    curl_preview_scroll: u16,
+    curl_preview_max_scroll: u16,
+    response_viewer_scroll: u16,
+    response_viewer_max_scroll: u16,
 }
 
 impl AppState {
@@ -51,6 +55,32 @@ impl AppState {
             filtering: false,
             last_selected_identity: None,
             last_response: None,
+            curl_preview_scroll: 0,
+            curl_preview_max_scroll: 0,
+            response_viewer_scroll: 0,
+            response_viewer_max_scroll: 0,
+        }
+    }
+
+    pub fn curl_preview_scroll(&self) -> u16 {
+        self.curl_preview_scroll
+    }
+
+    pub fn set_curl_preview_max_scroll(&mut self, max: u16) {
+        self.curl_preview_max_scroll = max;
+        if self.curl_preview_scroll > max {
+            self.curl_preview_scroll = max;
+        }
+    }
+
+    pub fn response_viewer_scroll(&self) -> u16 {
+        self.response_viewer_scroll
+    }
+
+    pub fn set_response_viewer_max_scroll(&mut self, max: u16) {
+        self.response_viewer_max_scroll = max;
+        if self.response_viewer_scroll > max {
+            self.response_viewer_scroll = max;
         }
     }
 
@@ -69,12 +99,14 @@ impl AppState {
         let current = current_identity.map(|(method, path)| (method.to_string(), path.to_string()));
         if current != self.last_selected_identity {
             self.request_builder.reset();
+            self.curl_preview_scroll = 0;
             self.last_selected_identity = current;
         }
     }
 
     pub fn set_response(&mut self, response: HttpResponse) {
         self.last_response = Some(response);
+        self.response_viewer_scroll = 0;
     }
 
     pub fn response(&self) -> Option<&HttpResponse> {
@@ -101,7 +133,26 @@ impl AppState {
                 Pane::AuthConfig => {
                     Self::handle_editor_key(&mut self.auth_config, key.code, key.modifiers)
                 }
-                Pane::CurlPreview | Pane::ResponseViewer => {}
+                Pane::CurlPreview => match key.code {
+                    KeyCode::Up => {
+                        self.curl_preview_scroll = self.curl_preview_scroll.saturating_sub(1)
+                    }
+                    KeyCode::Down => {
+                        self.curl_preview_scroll =
+                            (self.curl_preview_scroll + 1).min(self.curl_preview_max_scroll)
+                    }
+                    _ => {}
+                },
+                Pane::ResponseViewer => match key.code {
+                    KeyCode::Up => {
+                        self.response_viewer_scroll = self.response_viewer_scroll.saturating_sub(1)
+                    }
+                    KeyCode::Down => {
+                        self.response_viewer_scroll =
+                            (self.response_viewer_scroll + 1).min(self.response_viewer_max_scroll)
+                    }
+                    _ => {}
+                },
             },
         }
     }
