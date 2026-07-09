@@ -208,6 +208,33 @@ fn tab_is_no_op_while_editing_request_builder() {
 }
 
 #[test]
+fn endpoint_filter_treats_digit_as_filter_text_not_focus_jump() {
+    let mut state = AppState::new();
+
+    state.handle_key(key(KeyCode::Char('/')));
+    state.handle_key(key(KeyCode::Char('2')));
+
+    assert_eq!(state.focused, Pane::EndpointList);
+    assert!(state.is_editing());
+    assert_eq!(state.endpoint_filter, "2");
+}
+
+#[test]
+fn request_builder_editing_treats_digit_as_input_not_focus_jump() {
+    let mut state = AppState::new();
+    state.request_builder.set_row_count(1);
+
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Enter));
+    state.handle_key(key(KeyCode::Char('3')));
+
+    assert_eq!(state.focused, Pane::RequestBuilder);
+    assert!(state.is_editing());
+    assert_eq!(state.request_builder.editing_buffer(), Some("3"));
+}
+
+#[test]
 fn auth_config_routes_editing_keys_without_affecting_request_builder() {
     let mut state = AppState::new();
     state.auth_config.set_row_count(1);

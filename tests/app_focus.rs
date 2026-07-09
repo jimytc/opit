@@ -37,6 +37,80 @@ fn tab_cycles_forward_through_all_panes_and_wraps() {
 }
 
 #[test]
+fn digit_four_jumps_directly_to_curl_preview() {
+    let mut state = AppState::new();
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('4'), KeyModifiers::NONE));
+
+    assert_eq!(state.focused, Pane::CurlPreview);
+}
+
+#[test]
+fn digit_one_jumps_back_to_endpoint_list_from_another_pane() {
+    let mut state = AppState::new();
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::AuthConfig);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
+
+    assert_eq!(state.focused, Pane::EndpointList);
+}
+
+#[test]
+fn digit_keys_jump_to_their_mapped_panes() {
+    for (digit, pane) in [
+        ('1', Pane::EndpointList),
+        ('2', Pane::AuthConfig),
+        ('3', Pane::RequestBuilder),
+        ('4', Pane::CurlPreview),
+        ('5', Pane::ResponseViewer),
+    ] {
+        let mut state = AppState::new();
+
+        state.handle_key(KeyEvent::new(KeyCode::Char(digit), KeyModifiers::NONE));
+
+        assert_eq!(state.focused, pane);
+    }
+}
+
+#[test]
+fn out_of_range_digits_and_other_characters_do_not_change_focus() {
+    for c in ['0', '6', 'x'] {
+        let mut state = AppState::new();
+
+        state.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+
+        assert_eq!(state.focused, Pane::EndpointList);
+    }
+}
+
+#[test]
+fn jumping_to_pane_preserves_selection_and_scrolls() {
+    let mut state = AppState::new();
+    state.set_operation_count(3);
+    state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.set_curl_preview_max_scroll(5);
+    state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.set_response_viewer_max_scroll(5);
+    state.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE));
+
+    assert_eq!(state.focused, Pane::AuthConfig);
+    assert_eq!(state.selected_operation_index, 1);
+    assert_eq!(state.curl_preview_scroll(), 2);
+    assert_eq!(state.response_viewer_scroll(), 1);
+}
+
+#[test]
 fn backtab_from_endpoint_list_wraps_to_response_viewer() {
     let mut state = AppState::new();
 
