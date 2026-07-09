@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use openapi_terminal_app::request::missing_required_params;
+use openapi_terminal_app::request::{missing_required_params, RequestInputs};
 use openapi_terminal_app::spec::{Operation, Parameter};
 
 fn operation_with_parameters(parameters: Vec<Parameter>) -> Operation {
@@ -13,6 +13,15 @@ fn operation_with_parameters(parameters: Vec<Parameter>) -> Operation {
         summary: None,
         request_body_example: None,
         tags: vec![],
+    }
+}
+
+fn request_inputs(param_values: HashMap<String, String>) -> RequestInputs {
+    RequestInputs {
+        param_values,
+        extra_headers: vec![],
+        extra_query: vec![],
+        body: None,
     }
 }
 
@@ -30,7 +39,7 @@ fn reports_required_parameter_missing_when_only_optional_parameter_has_input() {
             required: false,
         },
     ]);
-    let inputs = HashMap::from([(1, "10".to_string())]);
+    let inputs = request_inputs(HashMap::from([("limit".to_string(), "10".to_string())]));
 
     let missing = missing_required_params(&operation, &inputs);
 
@@ -44,7 +53,7 @@ fn reports_required_parameter_missing_when_committed_value_is_empty() {
         location: "path".to_string(),
         required: true,
     }]);
-    let inputs = HashMap::from([(0, String::new())]);
+    let inputs = request_inputs(HashMap::from([("petId".to_string(), String::new())]));
 
     let missing = missing_required_params(&operation, &inputs);
 
@@ -58,7 +67,7 @@ fn returns_empty_vec_when_required_parameter_has_non_empty_input() {
         location: "path".to_string(),
         required: true,
     }]);
-    let inputs = HashMap::from([(0, "123".to_string())]);
+    let inputs = request_inputs(HashMap::from([("petId".to_string(), "123".to_string())]));
 
     let missing = missing_required_params(&operation, &inputs);
 
@@ -79,7 +88,7 @@ fn reports_multiple_missing_required_parameters_in_operation_order() {
             required: true,
         },
     ]);
-    let inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new());
 
     let missing = missing_required_params(&operation, &inputs);
 
@@ -98,7 +107,7 @@ fn returns_empty_vec_when_operation_has_no_parameters() {
         request_body_example: None,
         tags: vec![],
     };
-    let inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new());
 
     let missing = missing_required_params(&operation, &inputs);
 

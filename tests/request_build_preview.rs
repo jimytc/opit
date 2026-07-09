@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use openapi_terminal_app::auth::Credential;
-use openapi_terminal_app::request::build_preview;
+use openapi_terminal_app::request::{build_preview, RequestInputs};
 use openapi_terminal_app::spec::{Operation, Parameter, SecurityScheme, SecuritySchemeKind};
 
 fn get_pets_operation() -> Operation {
@@ -17,8 +17,17 @@ fn get_pets_operation() -> Operation {
     }
 }
 
+fn request_inputs(param_values: HashMap<String, String>, body: Option<String>) -> RequestInputs {
+    RequestInputs {
+        param_values,
+        extra_headers: vec![],
+        extra_query: vec![],
+        body,
+    }
+}
+
 #[test]
-fn build_preview_replaces_path_parameters_from_indexed_inputs() {
+fn build_preview_replaces_path_parameters_from_request_inputs() {
     let operation = Operation {
         path: "/pets/{petId}".to_string(),
         method: "GET".to_string(),
@@ -33,13 +42,16 @@ fn build_preview_replaces_path_parameters_from_indexed_inputs() {
         request_body_example: None,
         tags: vec![],
     };
-    let param_inputs = HashMap::from([(0, "123".to_string())]);
+    let inputs = request_inputs(
+        HashMap::from([("petId".to_string(), "123".to_string())]),
+        None,
+    );
     let auth_inputs = HashMap::new();
 
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &[],
         &auth_inputs,
         &[],
@@ -50,7 +62,7 @@ fn build_preview_replaces_path_parameters_from_indexed_inputs() {
 }
 
 #[test]
-fn build_preview_stores_raw_body_from_body_row() {
+fn build_preview_stores_raw_body_from_request_inputs() {
     let operation = Operation {
         path: "/pets".to_string(),
         method: "POST".to_string(),
@@ -61,19 +73,45 @@ fn build_preview_stores_raw_body_from_body_row() {
         request_body_example: None,
         tags: vec![],
     };
-    let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
+    let inputs = request_inputs(HashMap::new(), Some("{\"name\":\"fido\"}".to_string()));
     let auth_inputs = HashMap::new();
 
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &[],
         &auth_inputs,
         &[],
     );
 
     assert_eq!(request.body, Some("{\"name\":\"fido\"}".to_string()));
+}
+
+#[test]
+fn build_preview_includes_body_even_when_operation_does_not_declare_request_body() {
+    let operation = Operation {
+        path: "/pets".to_string(),
+        method: "POST".to_string(),
+        parameters: vec![],
+        has_request_body: false,
+        request_body_media_type: None,
+        summary: None,
+        request_body_example: None,
+        tags: vec![],
+    };
+    let inputs = request_inputs(HashMap::new(), Some("raw payload text".to_string()));
+
+    let request = build_preview(
+        "https://api.example.com",
+        &operation,
+        &inputs,
+        &[],
+        &HashMap::new(),
+        &[],
+    );
+
+    assert_eq!(request.body, Some("raw payload text".to_string()));
 }
 
 #[test]
@@ -88,12 +126,12 @@ fn build_preview_adds_content_type_header_when_body_value_is_present() {
         request_body_example: None,
         tags: vec![],
     };
-    let param_inputs = HashMap::from([(0, "{\"name\":\"fido\"}".to_string())]);
+    let inputs = request_inputs(HashMap::new(), Some("{\"name\":\"fido\"}".to_string()));
 
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &[],
         &HashMap::new(),
         &[],
@@ -116,12 +154,12 @@ fn build_preview_omits_content_type_header_when_body_value_is_absent() {
         request_body_example: None,
         tags: vec![],
     };
-    let param_inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new(), None);
 
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &[],
         &HashMap::new(),
         &[],
@@ -136,7 +174,7 @@ fn build_preview_omits_content_type_header_when_body_value_is_absent() {
 #[test]
 fn build_preview_applies_cli_sourced_credentials() {
     let operation = get_pets_operation();
-    let param_inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new(), None);
     let auth_inputs = HashMap::new();
     let cli_credentials = vec![Credential::Bearer {
         token: "cli-token".to_string(),
@@ -145,7 +183,7 @@ fn build_preview_applies_cli_sourced_credentials() {
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &[],
         &auth_inputs,
         &cli_credentials,
@@ -159,7 +197,7 @@ fn build_preview_applies_cli_sourced_credentials() {
 #[test]
 fn build_preview_applies_interactively_entered_auth_credentials() {
     let operation = get_pets_operation();
-    let param_inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new(), None);
     let security_schemes = vec![SecurityScheme {
         name: "apiKeyAuth".to_string(),
         kind: SecuritySchemeKind::ApiKey {
@@ -172,7 +210,7 @@ fn build_preview_applies_interactively_entered_auth_credentials() {
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &security_schemes,
         &auth_inputs,
         &[],
@@ -186,7 +224,7 @@ fn build_preview_applies_interactively_entered_auth_credentials() {
 #[test]
 fn build_preview_combines_cli_and_interactive_credentials() {
     let operation = get_pets_operation();
-    let param_inputs = HashMap::new();
+    let inputs = request_inputs(HashMap::new(), None);
     let security_schemes = vec![SecurityScheme {
         name: "apiKeyAuth".to_string(),
         kind: SecuritySchemeKind::ApiKey {
@@ -202,7 +240,7 @@ fn build_preview_combines_cli_and_interactive_credentials() {
     let request = build_preview(
         "https://api.example.com",
         &operation,
-        &param_inputs,
+        &inputs,
         &security_schemes,
         &auth_inputs,
         &cli_credentials,
