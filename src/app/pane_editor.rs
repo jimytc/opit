@@ -36,6 +36,18 @@ impl PaneEditor {
         self.multiline_rows = rows;
     }
 
+    pub fn row_count(&self) -> usize {
+        self.row_count
+    }
+
+    pub fn set_input(&mut self, row: usize, value: String) {
+        self.inputs.insert(row, value);
+    }
+
+    pub fn select_row(&mut self, row: usize) {
+        self.selected_row = row;
+    }
+
     pub fn is_editing_multiline_row(&self) -> bool {
         self.editing.is_some() && self.multiline_rows.contains(&self.selected_row)
     }
