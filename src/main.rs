@@ -277,17 +277,20 @@ fn draw(
 
     let columns = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .constraints([
+            Constraint::Percentage(30),
+            Constraint::Percentage(35),
+            Constraint::Percentage(35),
+        ])
         .split(body_and_footer[0]);
+    let middle = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(columns[1]);
     let right = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(25),
-            Constraint::Percentage(30),
-            Constraint::Percentage(20),
-            Constraint::Percentage(25),
-        ])
-        .split(columns[1]);
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(columns[2]);
 
     let mut endpoint_title = format!("Endpoints — {title} v{version}");
     if servers.len() > 1 {
@@ -329,7 +332,7 @@ fn draw(
             app.auth_config.editing_buffer(),
         )
         .block(auth_config_block),
-        right[0],
+        middle[0],
         &mut auth_config_state,
     );
 
@@ -353,15 +356,15 @@ fn draw(
             body_committed,
         )
         .block(request_builder_block),
-        right[1],
+        middle[1],
         &mut request_builder_state,
     );
 
     let curl_preview_block = Block::bordered()
         .title("Curl Preview")
         .border_style(pane_border_style(app.focused, Pane::CurlPreview));
-    let curl_preview_inner = curl_preview_block.inner(right[2]);
-    frame.render_widget(curl_preview_block, right[2]);
+    let curl_preview_inner = curl_preview_block.inner(right[0]);
+    frame.render_widget(curl_preview_block, right[0]);
     if let Some(operation) = selected_operation {
         let preview_request = request::build_preview(
             base_url,
@@ -388,7 +391,7 @@ fn draw(
     let response_viewer_block = Block::bordered()
         .title("Response Viewer")
         .border_style(pane_border_style(app.focused, Pane::ResponseViewer));
-    let response_viewer_inner = response_viewer_block.inner(right[3]);
+    let response_viewer_inner = response_viewer_block.inner(right[1]);
     let response_viewer_paragraph = response_viewer::widget(app.response());
     let response_line_count = response_viewer_paragraph.line_count(response_viewer_inner.width);
     app.set_response_viewer_max_scroll(
@@ -398,7 +401,7 @@ fn draw(
         response_viewer_paragraph
             .scroll((app.response_viewer_scroll(), 0))
             .block(response_viewer_block),
-        right[3],
+        right[1],
     );
 
     frame.render_widget(
@@ -407,7 +410,7 @@ fn draw(
     );
 }
 
-const HOTKEY_HINTS: &str = "Tab: cycle panes  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
+const HOTKEY_HINTS: &str = "Tab: cycle panes  1-5: jump to pane  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
 
 fn pane_border_style(focused: Pane, pane: Pane) -> Style {
     if focused == pane {
