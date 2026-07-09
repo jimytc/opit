@@ -10,14 +10,14 @@ use crossterm::terminal::{
     LeaveAlternateScreen,
 };
 use crossterm::ExecutableCommand;
-use openapi_terminal_app::app::{AppState, Pane};
+use openapi_terminal_app::app::{AppState, Pane, PaneEditor, RequestBuilderTab};
 use openapi_terminal_app::auth::oauth2::{
     build_token_caches, resolve_oauth2_credentials, SystemClock,
 };
 use openapi_terminal_app::auth::Credential;
 use openapi_terminal_app::cli::Cli;
 use openapi_terminal_app::request::{self, HttpClient, ReqwestClient};
-use openapi_terminal_app::spec::{Operation, SecurityScheme, SecuritySchemeKind, Spec};
+use openapi_terminal_app::spec::{Operation, Parameter, SecurityScheme, SecuritySchemeKind, Spec};
 use openapi_terminal_app::ui::{auth_config, endpoint_list, request_builder, response_viewer};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
@@ -136,15 +136,34 @@ async fn event_loop<B: ratatui::backend::Backend>(
                 .map(|operation| (operation.method.as_str(), operation.path.as_str())),
         );
         let selected_operation = filtered.get(app.selected_operation_index).copied();
-        let request_builder_row_count = selected_operation
-            .map(|operation| operation.parameters.len() + usize::from(operation.has_request_body))
-            .unwrap_or(0);
-        app.request_builder.headers.set_row_count(request_builder_row_count);
-        app.request_builder.headers.set_multiline_rows(
-            selected_operation
-                .filter(|operation| operation.has_request_body)
-                .map(|operation| HashSet::from([operation.parameters.len()]))
-                .unwrap_or_default(),
+        let header_params: Vec<&Parameter> = selected_operation
+            .map(|operation| operation.header_parameters())
+            .unwrap_or_default();
+        let non_header_params: Vec<&Parameter> = selected_operation
+            .map(|operation| operation.non_header_parameters())
+            .unwrap_or_default();
+
+        app.request_builder.headers.set_row_count(
+            header_params.len() + app.request_builder.custom_headers.len() + 1,
+        );
+        app.request_builder.parameters.set_row_count(
+            non_header_params.len() + app.request_builder.custom_query_params.len() + 1,
+        );
+        app.request_builder.payload.set_row_count(1);
+        app.request_builder
+            .payload
+            .set_multiline_rows(HashSet::from([0]));
+        app.set_header_param_names(
+            header_params
+                .iter()
+                .map(|parameter| parameter.name.clone())
+                .collect(),
+        );
+        app.set_parameter_param_names(
+            non_header_params
+                .iter()
+                .map(|parameter| parameter.name.clone())
+                .collect(),
         );
         app.auth_config.set_row_count(security_schemes.len());
         app.auth_config
@@ -188,9 +207,9 @@ async fn event_loop<B: ratatui::backend::Backend>(
                                     let request_inputs = request::gather_request_inputs(
                                         operation,
                                         app.request_builder.headers.inputs(),
-                                        &std::collections::HashMap::new(),
+                                        app.request_builder.parameters.inputs(),
                                         &app.request_builder.custom_headers,
-                                        &[],
+                                        &app.request_builder.custom_query_params,
                                         app.request_builder.payload.inputs(),
                                     );
                                     let missing = request::missing_required_params(
@@ -355,20 +374,39 @@ fn draw(
         &mut auth_config_state,
     );
 
+    let request_builder_title = format!(
+        "Request Builder — {} {} {}",
+        tab_label(app.request_builder_tab, RequestBuilderTab::Header, "Header"),
+        tab_label(
+            app.request_builder_tab,
+            RequestBuilderTab::Parameters,
+            "Parameters"
+        ),
+        tab_label(
+            app.request_builder_tab,
+            RequestBuilderTab::Payload,
+            "Payload"
+        ),
+    );
     let request_builder_block = Block::bordered()
-        .title("Request Builder")
+        .title(request_builder_title)
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
     let body_committed = app.request_builder.payload.inputs().contains_key(&0);
+    let active_editor: &PaneEditor = match app.request_builder_tab {
+        RequestBuilderTab::Header => &app.request_builder.headers,
+        RequestBuilderTab::Parameters => &app.request_builder.parameters,
+        RequestBuilderTab::Payload => &app.request_builder.payload,
+    };
     let mut request_builder_state = ListState::default();
-    request_builder_state.select(Some(app.request_builder.headers.selected_row()));
+    request_builder_state.select(Some(active_editor.selected_row()));
     frame.render_stateful_widget(
         request_builder::widget(
             app.request_builder_tab,
             selected_operation,
             &app.request_builder.custom_headers,
             &app.request_builder.custom_query_params,
-            app.request_builder.headers.selected_row(),
-            app.request_builder.headers.editing_buffer(),
+            active_editor.selected_row(),
+            active_editor.editing_buffer(),
             body_committed,
         )
         .block(request_builder_block),
@@ -385,9 +423,9 @@ fn draw(
         let preview_request_inputs = request::gather_request_inputs(
             operation,
             &app.request_builder.headers.inputs_with_live_edit(),
-            &std::collections::HashMap::new(),
+            &app.request_builder.parameters.inputs_with_live_edit(),
             &app.request_builder.custom_headers,
-            &[],
+            &app.request_builder.custom_query_params,
             &app.request_builder.payload.inputs_with_live_edit(),
         );
         let preview_request = request::build_preview(
@@ -434,7 +472,15 @@ fn draw(
     );
 }
 
-const HOTKEY_HINTS: &str = "Tab: cycle panes  Ctrl+Alt+1-5: jump to pane  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
+const HOTKEY_HINTS: &str = "Tab: cycle panes  Ctrl+Alt+1-5: jump to pane  [ / ]: switch Request Builder tab  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
+
+fn tab_label(current: RequestBuilderTab, tab: RequestBuilderTab, label: &str) -> String {
+    if current == tab {
+        format!("[{label}]")
+    } else {
+        label.to_string()
+    }
+}
 
 fn pane_border_style(focused: Pane, pane: Pane) -> Style {
     if focused == pane {
