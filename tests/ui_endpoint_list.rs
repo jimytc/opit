@@ -2,7 +2,7 @@ use openapi_terminal_app::spec::Operation;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Modifier,
+    style::{Color, Modifier},
     widgets::{ListState, StatefulWidget, Widget},
 };
 
@@ -273,6 +273,46 @@ fn endpoint_list_renders_group_headers_as_separate_identifiable_rows() {
 }
 
 #[test]
+fn endpoint_list_styles_group_header_rows_with_bold_cyan_text() {
+    let operations = vec![operation("/pets", "GET", None, vec!["Pets"])];
+    let filtered = operation_refs(&operations);
+
+    let (widget, _highlight_index) = openapi_terminal_app::ui::endpoint_list::render(&filtered, 0);
+    let area = Rect::new(0, 0, 30, 3);
+    let mut buffer = Buffer::empty(area);
+
+    Widget::render(widget, area, &mut buffer);
+
+    let header = row_text(&buffer, area, 0);
+    let operation_row = row_text(&buffer, area, 1);
+
+    assert!(
+        header.contains("Pets"),
+        "expected header row to contain group name, got {header:?}"
+    );
+    assert!(
+        operation_row.contains("GET /pets"),
+        "expected operation row to contain method and path, got {operation_row:?}"
+    );
+    assert!(
+        row_has_bold_modifier(&buffer, area, 0),
+        "expected header row to have BOLD style"
+    );
+    assert!(
+        row_has_foreground_color(&buffer, area, 0, Color::Cyan),
+        "expected header row to have Cyan foreground color"
+    );
+    assert!(
+        !row_has_bold_modifier(&buffer, area, 1),
+        "expected operation row to not have BOLD style"
+    );
+    assert!(
+        !row_has_foreground_color(&buffer, area, 1, Color::Cyan),
+        "expected operation row to not have Cyan foreground color"
+    );
+}
+
+#[test]
 fn endpoint_list_rendered_row_count_includes_group_headers_and_summary_rows() {
     let operations = vec![
         operation("/pets", "GET", Some("List all pets"), vec!["Pets"]),
@@ -343,4 +383,17 @@ fn row_has_reversed_modifier(buffer: &Buffer, area: Rect, row: u16) -> bool {
             .add_modifier
             .contains(Modifier::REVERSED)
     })
+}
+
+fn row_has_bold_modifier(buffer: &Buffer, area: Rect, row: u16) -> bool {
+    (area.left()..area.right()).any(|x| {
+        buffer[(x, row)]
+            .style()
+            .add_modifier
+            .contains(Modifier::BOLD)
+    })
+}
+
+fn row_has_foreground_color(buffer: &Buffer, area: Rect, row: u16, color: Color) -> bool {
+    (area.left()..area.right()).any(|x| buffer[(x, row)].style().fg == Some(color))
 }
