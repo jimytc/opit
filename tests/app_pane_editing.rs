@@ -111,9 +111,10 @@ fn request_builder_enter_inserts_newline_when_editing_multiline_row() {
 #[test]
 fn request_builder_enter_commits_non_multiline_row() {
     let mut state = AppState::new();
-    state.request_builder.headers.set_row_count(1);
+    state.request_builder.payload.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
+    state.handle_key(key(KeyCode::Char('[')));
     state.handle_key(key(KeyCode::Enter));
 
     state.handle_key(key(KeyCode::Char('a')));
@@ -121,7 +122,7 @@ fn request_builder_enter_commits_non_multiline_row() {
 
     assert!(!state.is_editing());
     assert_eq!(
-        state.request_builder.headers.inputs().get(&0),
+        state.request_builder.payload.inputs().get(&0),
         Some(&"a".to_string())
     );
 }
@@ -129,13 +130,14 @@ fn request_builder_enter_commits_non_multiline_row() {
 #[test]
 fn ctrl_s_commits_multiline_request_builder_buffer() {
     let mut state = AppState::new();
-    state.request_builder.headers.set_row_count(1);
+    state.request_builder.payload.set_row_count(1);
     state
         .request_builder
-        .headers
+        .payload
         .set_multiline_rows(HashSet::from([0]));
     state.handle_key(tab());
     state.handle_key(tab());
+    state.handle_key(key(KeyCode::Char('[')));
     state.handle_key(key(KeyCode::Enter));
     state.handle_key(key(KeyCode::Char('a')));
     state.handle_key(key(KeyCode::Enter));
@@ -145,10 +147,10 @@ fn ctrl_s_commits_multiline_request_builder_buffer() {
 
     assert!(!state.is_editing());
     assert_eq!(
-        state.request_builder.headers.inputs().get(&0),
+        state.request_builder.payload.inputs().get(&0),
         Some(&"a\nb".to_string())
     );
-    assert_eq!(state.request_builder.headers.editing_buffer(), None);
+    assert_eq!(state.request_builder.payload.editing_buffer(), None);
 }
 
 #[test]
