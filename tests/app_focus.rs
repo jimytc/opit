@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use openapi_terminal_app::app::{AppState, Pane};
+use openapi_terminal_app::app::{AppState, Pane, RequestBuilderTab};
 
 fn pane_jump_modifiers() -> KeyModifiers {
     KeyModifiers::CONTROL | KeyModifiers::ALT
@@ -38,6 +38,78 @@ fn tab_cycles_forward_through_all_panes_and_wraps() {
 
     state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
     assert_eq!(state.focused, Pane::EndpointList);
+}
+
+#[test]
+fn new_app_state_starts_on_header_request_builder_tab() {
+    let state = AppState::new();
+
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+}
+
+#[test]
+fn right_bracket_cycles_request_builder_tabs_forward_when_request_builder_is_focused() {
+    let mut state = AppState::new();
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::RequestBuilder);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Parameters);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Payload);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+}
+
+#[test]
+fn left_bracket_cycles_request_builder_tabs_backward_when_request_builder_is_focused() {
+    let mut state = AppState::new();
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::RequestBuilder);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Payload);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Parameters);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE));
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+}
+
+#[test]
+fn brackets_do_not_cycle_request_builder_tabs_when_endpoint_list_is_focused() {
+    let mut state = AppState::new();
+
+    state.handle_key(KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::EndpointList);
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+
+    state.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    assert_eq!(state.focused, Pane::EndpointList);
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+}
+
+#[test]
+fn bracket_is_typed_when_request_builder_is_editing() {
+    let mut state = AppState::new();
+    state.request_builder.headers.set_row_count(1);
+
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    state.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+
+    assert_eq!(state.focused, Pane::RequestBuilder);
+    assert!(state.is_editing());
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Header);
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some("]"));
 }
 
 #[test]

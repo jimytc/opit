@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use openapi_terminal_app::app::{AppState, Pane};
+use openapi_terminal_app::app::{AppState, Pane, RequestBuilderTab};
 
 fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
@@ -20,12 +20,12 @@ fn ctrl_s() -> KeyEvent {
 }
 
 fn commit_request_builder_input(state: &mut AppState, value: &str) {
-    state.request_builder.set_row_count(1);
-    state.request_builder.start_editing();
+    state.request_builder.headers.set_row_count(1);
+    state.request_builder.headers.start_editing();
     for c in value.chars() {
-        state.request_builder.push_char(c);
+        state.request_builder.headers.push_char(c);
     }
-    state.request_builder.commit();
+    state.request_builder.headers.commit();
 }
 
 fn commit_auth_config_input(state: &mut AppState, value: &str) {
@@ -47,7 +47,7 @@ fn is_editing_is_false_on_fresh_app_state() {
 #[test]
 fn enter_starts_editing_request_builder_when_focused() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(2);
+    state.request_builder.headers.set_row_count(2);
 
     state.handle_key(tab());
     state.handle_key(tab());
@@ -55,29 +55,29 @@ fn enter_starts_editing_request_builder_when_focused() {
 
     assert_eq!(state.focused, Pane::RequestBuilder);
     assert!(state.is_editing());
-    assert_eq!(state.request_builder.editing_buffer(), Some(""));
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some(""));
 }
 
 #[test]
 fn request_builder_char_backspace_and_enter_commit_through_handle_key() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(2);
+    state.request_builder.headers.set_row_count(2);
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
     state.handle_key(key(KeyCode::Char('a')));
     state.handle_key(key(KeyCode::Char('b')));
-    assert_eq!(state.request_builder.editing_buffer(), Some("ab"));
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some("ab"));
 
     state.handle_key(key(KeyCode::Backspace));
-    assert_eq!(state.request_builder.editing_buffer(), Some("a"));
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some("a"));
 
     state.handle_key(key(KeyCode::Enter));
 
     assert!(!state.is_editing());
     assert_eq!(
-        state.request_builder.inputs().get(&0),
+        state.request_builder.headers.inputs().get(&0),
         Some(&"a".to_string())
     );
 }
@@ -85,8 +85,11 @@ fn request_builder_char_backspace_and_enter_commit_through_handle_key() {
 #[test]
 fn request_builder_enter_inserts_newline_when_editing_multiline_row() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
-    state.request_builder.set_multiline_rows(HashSet::from([0]));
+    state.request_builder.headers.set_row_count(1);
+    state
+        .request_builder
+        .headers
+        .set_multiline_rows(HashSet::from([0]));
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
@@ -98,14 +101,17 @@ fn request_builder_enter_inserts_newline_when_editing_multiline_row() {
     state.handle_key(key(KeyCode::Char('d')));
 
     assert!(state.is_editing());
-    assert_eq!(state.request_builder.editing_buffer(), Some("ab\ncd"));
-    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(
+        state.request_builder.headers.editing_buffer(),
+        Some("ab\ncd")
+    );
+    assert!(state.request_builder.headers.inputs().is_empty());
 }
 
 #[test]
 fn request_builder_enter_commits_non_multiline_row() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
@@ -115,7 +121,7 @@ fn request_builder_enter_commits_non_multiline_row() {
 
     assert!(!state.is_editing());
     assert_eq!(
-        state.request_builder.inputs().get(&0),
+        state.request_builder.headers.inputs().get(&0),
         Some(&"a".to_string())
     );
 }
@@ -123,8 +129,11 @@ fn request_builder_enter_commits_non_multiline_row() {
 #[test]
 fn ctrl_s_commits_multiline_request_builder_buffer() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
-    state.request_builder.set_multiline_rows(HashSet::from([0]));
+    state.request_builder.headers.set_row_count(1);
+    state
+        .request_builder
+        .headers
+        .set_multiline_rows(HashSet::from([0]));
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
@@ -136,10 +145,10 @@ fn ctrl_s_commits_multiline_request_builder_buffer() {
 
     assert!(!state.is_editing());
     assert_eq!(
-        state.request_builder.inputs().get(&0),
+        state.request_builder.headers.inputs().get(&0),
         Some(&"a\nb".to_string())
     );
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
 }
 
 #[test]
@@ -162,14 +171,14 @@ fn ctrl_s_commits_auth_config_buffer() {
 #[test]
 fn ctrl_s_is_no_op_when_not_editing() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
 
     state.handle_key(ctrl_s());
 
     assert!(!state.is_editing());
     assert_eq!(state.focused, Pane::EndpointList);
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
     assert!(state.auth_config.inputs().is_empty());
     assert_eq!(state.auth_config.editing_buffer(), None);
 }
@@ -177,7 +186,7 @@ fn ctrl_s_is_no_op_when_not_editing() {
 #[test]
 fn request_builder_esc_cancels_without_committing() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
@@ -187,14 +196,14 @@ fn request_builder_esc_cancels_without_committing() {
     state.handle_key(key(KeyCode::Esc));
 
     assert!(!state.is_editing());
-    assert_eq!(state.request_builder.editing_buffer(), None);
-    assert_eq!(state.request_builder.inputs().get(&0), None);
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
+    assert_eq!(state.request_builder.headers.inputs().get(&0), None);
 }
 
 #[test]
 fn tab_is_no_op_while_editing_request_builder() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
@@ -204,7 +213,7 @@ fn tab_is_no_op_while_editing_request_builder() {
 
     assert_eq!(state.focused, Pane::RequestBuilder);
     assert!(state.is_editing());
-    assert_eq!(state.request_builder.editing_buffer(), Some(""));
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some(""));
 }
 
 #[test]
@@ -222,7 +231,7 @@ fn endpoint_filter_treats_digit_as_filter_text_not_focus_jump() {
 #[test]
 fn request_builder_editing_treats_digit_as_input_not_focus_jump() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
 
     state.handle_key(tab());
     state.handle_key(tab());
@@ -231,7 +240,7 @@ fn request_builder_editing_treats_digit_as_input_not_focus_jump() {
 
     assert_eq!(state.focused, Pane::RequestBuilder);
     assert!(state.is_editing());
-    assert_eq!(state.request_builder.editing_buffer(), Some("3"));
+    assert_eq!(state.request_builder.headers.editing_buffer(), Some("3"));
 }
 
 #[test]
@@ -257,22 +266,25 @@ fn auth_config_routes_editing_keys_without_affecting_request_builder() {
     state.handle_key(key(KeyCode::Enter));
 
     assert_eq!(state.auth_config.inputs().get(&0), Some(&"z".to_string()));
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
 }
 
 #[test]
 fn handle_paste_appends_to_editing_request_builder() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
     state.handle_key(key(KeyCode::Enter));
 
     state.handle_paste("pasted\ntext");
 
-    assert_eq!(state.request_builder.editing_buffer(), Some("pasted\ntext"));
-    assert!(state.request_builder.inputs().is_empty());
+    assert_eq!(
+        state.request_builder.headers.editing_buffer(),
+        Some("pasted\ntext")
+    );
+    assert!(state.request_builder.headers.inputs().is_empty());
 }
 
 #[test]
@@ -286,8 +298,8 @@ fn handle_paste_appends_to_editing_auth_config_without_affecting_request_builder
 
     assert_eq!(state.auth_config.editing_buffer(), Some("secret"));
     assert!(state.auth_config.inputs().is_empty());
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
 }
 
 #[test]
@@ -297,8 +309,8 @@ fn handle_paste_is_no_op_when_endpoint_list_is_focused() {
     state.handle_paste("ignored");
 
     assert_eq!(state.focused, Pane::EndpointList);
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
     assert!(state.auth_config.inputs().is_empty());
     assert_eq!(state.auth_config.editing_buffer(), None);
 }
@@ -306,15 +318,15 @@ fn handle_paste_is_no_op_when_endpoint_list_is_focused() {
 #[test]
 fn handle_paste_is_no_op_when_request_builder_is_focused_but_not_editing() {
     let mut state = AppState::new();
-    state.request_builder.set_row_count(1);
+    state.request_builder.headers.set_row_count(1);
     state.handle_key(tab());
     state.handle_key(tab());
 
     state.handle_paste("ignored");
 
     assert_eq!(state.focused, Pane::RequestBuilder);
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
 }
 
 #[test]
@@ -326,8 +338,8 @@ fn endpoint_down_that_changes_selection_resets_request_builder() {
     state.handle_key(key(KeyCode::Down));
 
     assert_eq!(state.selected_operation_index, 1);
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
 }
 
 #[test]
@@ -340,7 +352,7 @@ fn endpoint_up_at_first_selection_does_not_reset_request_builder() {
 
     assert_eq!(state.selected_operation_index, 0);
     assert_eq!(
-        state.request_builder.inputs().get(&0),
+        state.request_builder.headers.inputs().get(&0),
         Some(&"x".to_string())
     );
 }
@@ -366,8 +378,53 @@ fn sync_selected_operation_resets_request_builder_when_identity_changes_at_same_
 
     state.sync_selected_operation(Some(("POST", "/pets")));
 
-    assert!(state.request_builder.inputs().is_empty());
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
+    assert_eq!(state.selected_operation_index, 0);
+}
+
+#[test]
+fn sync_selected_operation_resets_request_builder_fields_but_preserves_current_request_builder_tab()
+{
+    let mut state = AppState::new();
+    state.sync_selected_operation(Some(("GET", "/pets")));
+
+    commit_request_builder_input(&mut state, "header");
+    state.request_builder.parameters.set_row_count(1);
+    state.request_builder.parameters.start_editing();
+    state.request_builder.parameters.push_char('p');
+    state.request_builder.parameters.commit();
+    state.request_builder.payload.set_row_count(1);
+    state.request_builder.payload.start_editing();
+    state.request_builder.payload.push_char('b');
+    state.request_builder.payload.commit();
+    state
+        .request_builder
+        .custom_headers
+        .push("x-custom: value".to_string());
+    state
+        .request_builder
+        .custom_query_params
+        .push("debug=true".to_string());
+
+    state.handle_key(tab());
+    state.handle_key(tab());
+    state.handle_key(key(KeyCode::Char(']')));
+    state.handle_key(key(KeyCode::Char(']')));
+    assert_eq!(state.focused, Pane::RequestBuilder);
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Payload);
+
+    state.sync_selected_operation(Some(("POST", "/pets")));
+
+    assert_eq!(state.request_builder_tab, RequestBuilderTab::Payload);
+    assert!(state.request_builder.headers.inputs().is_empty());
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
+    assert!(state.request_builder.parameters.inputs().is_empty());
+    assert_eq!(state.request_builder.parameters.editing_buffer(), None);
+    assert!(state.request_builder.payload.inputs().is_empty());
+    assert_eq!(state.request_builder.payload.editing_buffer(), None);
+    assert!(state.request_builder.custom_headers.is_empty());
+    assert!(state.request_builder.custom_query_params.is_empty());
     assert_eq!(state.selected_operation_index, 0);
 }
 
@@ -381,10 +438,10 @@ fn sync_selected_operation_does_not_reset_request_builder_when_identity_is_uncha
     state.sync_selected_operation(Some(("GET", "/pets")));
 
     assert_eq!(
-        state.request_builder.inputs().get(&0),
+        state.request_builder.headers.inputs().get(&0),
         Some(&"x".to_string())
     );
-    assert_eq!(state.request_builder.editing_buffer(), None);
+    assert_eq!(state.request_builder.headers.editing_buffer(), None);
     assert_eq!(state.selected_operation_index, 0);
 }
 
@@ -401,14 +458,18 @@ fn response_viewer_ignores_editing_and_navigation_keys() {
     state.handle_key(tab());
     assert_eq!(state.focused, Pane::ResponseViewer);
 
-    state.request_builder.start_editing();
-    state.request_builder.push_char('!');
+    state.request_builder.headers.start_editing();
+    state.request_builder.headers.push_char('!');
     state.auth_config.start_editing();
     state.auth_config.push_char('?');
 
     let selected_operation_index_before = state.selected_operation_index;
-    let request_inputs_before = state.request_builder.inputs().clone();
-    let request_buffer_before = state.request_builder.editing_buffer().map(str::to_owned);
+    let request_inputs_before = state.request_builder.headers.inputs().clone();
+    let request_buffer_before = state
+        .request_builder
+        .headers
+        .editing_buffer()
+        .map(str::to_owned);
     let auth_inputs_before = state.auth_config.inputs().clone();
     let auth_buffer_before = state.auth_config.editing_buffer().map(str::to_owned);
 
@@ -422,9 +483,12 @@ fn response_viewer_ignores_editing_and_navigation_keys() {
         state.selected_operation_index,
         selected_operation_index_before
     );
-    assert_eq!(state.request_builder.inputs(), &request_inputs_before);
     assert_eq!(
-        state.request_builder.editing_buffer(),
+        state.request_builder.headers.inputs(),
+        &request_inputs_before
+    );
+    assert_eq!(
+        state.request_builder.headers.editing_buffer(),
         request_buffer_before.as_deref()
     );
     assert_eq!(state.auth_config.inputs(), &auth_inputs_before);
@@ -447,14 +511,18 @@ fn response_viewer_up_and_down_scroll_without_affecting_editable_panes_or_select
     state.handle_key(tab());
     assert_eq!(state.focused, Pane::ResponseViewer);
 
-    state.request_builder.start_editing();
-    state.request_builder.push_char('!');
+    state.request_builder.headers.start_editing();
+    state.request_builder.headers.push_char('!');
     state.auth_config.start_editing();
     state.auth_config.push_char('?');
 
     let selected_operation_index_before = state.selected_operation_index;
-    let request_inputs_before = state.request_builder.inputs().clone();
-    let request_buffer_before = state.request_builder.editing_buffer().map(str::to_owned);
+    let request_inputs_before = state.request_builder.headers.inputs().clone();
+    let request_buffer_before = state
+        .request_builder
+        .headers
+        .editing_buffer()
+        .map(str::to_owned);
     let auth_inputs_before = state.auth_config.inputs().clone();
     let auth_buffer_before = state.auth_config.editing_buffer().map(str::to_owned);
 
@@ -468,9 +536,12 @@ fn response_viewer_up_and_down_scroll_without_affecting_editable_panes_or_select
         state.selected_operation_index,
         selected_operation_index_before
     );
-    assert_eq!(state.request_builder.inputs(), &request_inputs_before);
     assert_eq!(
-        state.request_builder.editing_buffer(),
+        state.request_builder.headers.inputs(),
+        &request_inputs_before
+    );
+    assert_eq!(
+        state.request_builder.headers.editing_buffer(),
         request_buffer_before.as_deref()
     );
     assert_eq!(state.auth_config.inputs(), &auth_inputs_before);
