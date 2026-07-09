@@ -14,6 +14,12 @@ const PANE_CYCLE: [Pane; 5] = [
     Pane::ResponseViewer,
 ];
 
+const REQUEST_BUILDER_TAB_CYCLE: [RequestBuilderTab; 3] = [
+    RequestBuilderTab::Header,
+    RequestBuilderTab::Parameters,
+    RequestBuilderTab::Payload,
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
     EndpointList,
@@ -23,12 +29,43 @@ pub enum Pane {
     ResponseViewer,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequestBuilderTab {
+    Header,
+    Parameters,
+    Payload,
+}
+
+#[derive(Default)]
+pub struct RequestBuilderState {
+    pub headers: PaneEditor,
+    pub parameters: PaneEditor,
+    pub payload: PaneEditor,
+    pub custom_headers: Vec<String>,
+    pub custom_query_params: Vec<String>,
+}
+
+impl RequestBuilderState {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn reset(&mut self) {
+        self.headers.reset();
+        self.parameters.reset();
+        self.payload.reset();
+        self.custom_headers.clear();
+        self.custom_query_params.clear();
+    }
+}
+
 pub struct AppState {
     pub focused: Pane,
     pub selected_operation_index: usize,
     pub selected_server_index: usize,
     pub endpoint_filter: String,
-    pub request_builder: PaneEditor,
+    pub request_builder: RequestBuilderState,
+    pub request_builder_tab: RequestBuilderTab,
     pub auth_config: PaneEditor,
     operation_count: usize,
     server_count: usize,
@@ -48,7 +85,8 @@ impl AppState {
             selected_operation_index: 0,
             selected_server_index: 0,
             endpoint_filter: String::new(),
-            request_builder: PaneEditor::new(),
+            request_builder: RequestBuilderState::new(),
+            request_builder_tab: RequestBuilderTab::Header,
             auth_config: PaneEditor::new(),
             operation_count: 0,
             server_count: 0,
@@ -104,6 +142,22 @@ impl AppState {
         }
     }
 
+    fn active_request_editor(&self) -> &PaneEditor {
+        match self.request_builder_tab {
+            RequestBuilderTab::Header => &self.request_builder.headers,
+            RequestBuilderTab::Parameters => &self.request_builder.parameters,
+            RequestBuilderTab::Payload => &self.request_builder.payload,
+        }
+    }
+
+    fn active_request_editor_mut(&mut self) -> &mut PaneEditor {
+        match self.request_builder_tab {
+            RequestBuilderTab::Header => &mut self.request_builder.headers,
+            RequestBuilderTab::Parameters => &mut self.request_builder.parameters,
+            RequestBuilderTab::Payload => &mut self.request_builder.payload,
+        }
+    }
+
     pub fn set_response(&mut self, response: HttpResponse) {
         self.last_response = Some(response);
         self.response_viewer_scroll = 0;
@@ -115,7 +169,7 @@ impl AppState {
 
     pub fn is_editing(&self) -> bool {
         match self.focused {
-            Pane::RequestBuilder => self.request_builder.editing_buffer().is_some(),
+            Pane::RequestBuilder => self.active_request_editor().editing_buffer().is_some(),
             Pane::AuthConfig => self.auth_config.editing_buffer().is_some(),
             Pane::EndpointList => self.filtering,
             Pane::CurlPreview | Pane::ResponseViewer => false,
@@ -131,10 +185,15 @@ impl AppState {
             {
                 self.jump_to_pane(digit)
             }
+            KeyCode::Char('[') | KeyCode::Char(']')
+                if self.focused == Pane::RequestBuilder && !self.is_editing() =>
+            {
+                self.cycle_request_builder_tab(key.code == KeyCode::Char(']'))
+            }
             _ => match self.focused {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
                 Pane::RequestBuilder => {
-                    Self::handle_editor_key(&mut self.request_builder, key.code, key.modifiers)
+                    Self::handle_editor_key(self.active_request_editor_mut(), key.code, key.modifiers)
                 }
                 Pane::AuthConfig => {
                     Self::handle_editor_key(&mut self.auth_config, key.code, key.modifiers)
@@ -165,7 +224,7 @@ impl AppState {
 
     pub fn handle_paste(&mut self, text: &str) {
         match self.focused {
-            Pane::RequestBuilder => self.request_builder.push_str(text),
+            Pane::RequestBuilder => self.active_request_editor_mut().push_str(text),
             Pane::AuthConfig => self.auth_config.push_str(text),
             Pane::EndpointList | Pane::CurlPreview | Pane::ResponseViewer => {}
         }
@@ -248,6 +307,20 @@ impl AppState {
             '4' => Pane::CurlPreview,
             '5' => Pane::ResponseViewer,
             _ => self.focused,
+        };
+    }
+
+    fn cycle_request_builder_tab(&mut self, forward: bool) {
+        let current_index = REQUEST_BUILDER_TAB_CYCLE
+            .iter()
+            .position(|tab| *tab == self.request_builder_tab)
+            .expect("request_builder_tab is always in REQUEST_BUILDER_TAB_CYCLE");
+        let len = REQUEST_BUILDER_TAB_CYCLE.len();
+
+        self.request_builder_tab = if forward {
+            REQUEST_BUILDER_TAB_CYCLE[(current_index + 1) % len]
+        } else {
+            REQUEST_BUILDER_TAB_CYCLE[(current_index + len - 1) % len]
         };
     }
 

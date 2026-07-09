@@ -139,8 +139,8 @@ async fn event_loop<B: ratatui::backend::Backend>(
         let request_builder_row_count = selected_operation
             .map(|operation| operation.parameters.len() + usize::from(operation.has_request_body))
             .unwrap_or(0);
-        app.request_builder.set_row_count(request_builder_row_count);
-        app.request_builder.set_multiline_rows(
+        app.request_builder.headers.set_row_count(request_builder_row_count);
+        app.request_builder.headers.set_multiline_rows(
             selected_operation
                 .filter(|operation| operation.has_request_body)
                 .map(|operation| HashSet::from([operation.parameters.len()]))
@@ -187,7 +187,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
                                 if let Some(operation) = selected_operation {
                                     let missing = request::missing_required_params(
                                         operation,
-                                        app.request_builder.inputs(),
+                                        app.request_builder.headers.inputs(),
                                     );
                                     if !missing.is_empty() {
                                         app.set_response(request::HttpResponse {
@@ -203,7 +203,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
                                     let mut request = request::build_preview(
                                         base_url,
                                         operation,
-                                        app.request_builder.inputs(),
+                                        app.request_builder.headers.inputs(),
                                         security_schemes,
                                         app.auth_config.inputs(),
                                         cli_credentials,
@@ -353,17 +353,18 @@ fn draw(
     let body_committed = selected_operation
         .map(|operation| {
             app.request_builder
+                .headers
                 .inputs()
                 .contains_key(&operation.parameters.len())
         })
         .unwrap_or(false);
     let mut request_builder_state = ListState::default();
-    request_builder_state.select(Some(app.request_builder.selected_row()));
+    request_builder_state.select(Some(app.request_builder.headers.selected_row()));
     frame.render_stateful_widget(
         request_builder::widget(
             selected_operation,
-            app.request_builder.selected_row(),
-            app.request_builder.editing_buffer(),
+            app.request_builder.headers.selected_row(),
+            app.request_builder.headers.editing_buffer(),
             body_committed,
         )
         .block(request_builder_block),
@@ -380,7 +381,7 @@ fn draw(
         let preview_request = request::build_preview(
             base_url,
             operation,
-            &app.request_builder.inputs_with_live_edit(),
+            &app.request_builder.headers.inputs_with_live_edit(),
             security_schemes,
             &app.auth_config.inputs_with_live_edit(),
             cli_credentials,
