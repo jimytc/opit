@@ -125,7 +125,12 @@ impl AppState {
     pub fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Tab | KeyCode::BackTab if !self.is_editing() => self.cycle_focus(key.code),
-            KeyCode::Char(digit @ '1'..='5') if !self.is_editing() => self.jump_to_pane(digit),
+            KeyCode::Char(digit @ '1'..='5')
+                if !self.is_editing()
+                    && key.modifiers.contains(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+            {
+                self.jump_to_pane(digit)
+            }
             _ => match self.focused {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
                 Pane::RequestBuilder => {
