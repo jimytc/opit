@@ -179,6 +179,11 @@ per concern; production code lives under `src/`.
 cargo test
 ```
 
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the codebase is put together
+(C4 diagrams, sequence/state diagrams, module responsibilities, and the non-obvious
+design decisions behind the Request Builder tabs and OAuth2 handling) — start there
+before making non-trivial changes.
+
 ## Cross-compiling for Linux
 
 Requires [Docker](https://www.docker.com) (or a compatible engine like OrbStack) and the
