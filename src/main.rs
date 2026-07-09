@@ -270,10 +270,15 @@ fn draw(
     version: &str,
     cli_credentials: &[Credential],
 ) {
+    let body_and_footer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(1)])
+        .split(frame.area());
+
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(frame.area());
+        .split(body_and_footer[0]);
     let right = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -395,7 +400,14 @@ fn draw(
             .block(response_viewer_block),
         right[3],
     );
+
+    frame.render_widget(
+        Paragraph::new(HOTKEY_HINTS).style(Style::default().fg(Color::DarkGray)),
+        body_and_footer[1],
+    );
 }
+
+const HOTKEY_HINTS: &str = "Tab: cycle panes  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
 
 fn pane_border_style(focused: Pane, pane: Pane) -> Style {
     if focused == pane {
