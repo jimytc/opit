@@ -176,10 +176,15 @@ Debian 12). If you need binaries that run on any Linux regardless of glibc versi
 
 ## Releasing
 
-Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds and
-publishes a GitHub Release with:
+Create the tag with an annotated message summarizing what's new (`git tag -a vX.Y.Z -m "..."`)
+— this becomes the release's notes, so write real content, not just the version number.
+Pushing the tag triggers `.github/workflows/release.yml`, which builds and publishes a
+GitHub Release with:
 - `opit-vX.Y.Z-aarch64-apple-darwin.tar.gz` and `.dmg` (macOS)
 - `opit-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` and `opit-vX.Y.Z-aarch64-unknown-linux-gnu.tar.gz` (Linux)
+
+The release's notes combine the tag's annotated message with GitHub's auto-generated
+"Full Changelog" compare link appended below it.
 
 After a release, update the Homebrew tap
 ([jimytc/homebrew-opit](https://github.com/jimytc/homebrew-opit)) — see that repo's
