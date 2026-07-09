@@ -64,7 +64,8 @@ pub fn render(filtered: &[&Operation], selected_operation_index: usize) -> (List
     for (index, operation) in filtered.iter().enumerate() {
         let group = operation_group(operation);
         if current_group != Some(group) {
-            items.push(ListItem::new(Line::from(group.to_string())));
+            let header_style = Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD);
+            items.push(ListItem::new(Line::styled(group.to_string(), header_style)));
             current_group = Some(group);
         }
         if index == selected_operation_index {
