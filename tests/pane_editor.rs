@@ -51,6 +51,32 @@ fn set_row_count_with_larger_count_preserves_committed_inputs() {
 }
 
 #[test]
+fn row_count_is_zero_on_fresh_editor() {
+    let editor = PaneEditor::new();
+
+    assert_eq!(editor.row_count(), 0);
+}
+
+#[test]
+fn row_count_returns_last_set_row_count() {
+    let mut editor = PaneEditor::new();
+
+    editor.set_row_count(7);
+
+    assert_eq!(editor.row_count(), 7);
+}
+
+#[test]
+fn row_count_returns_smaller_last_set_row_count_after_shrink() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(7);
+
+    editor.set_row_count(2);
+
+    assert_eq!(editor.row_count(), 2);
+}
+
+#[test]
 fn move_up_is_bounded_at_first_row() {
     let mut editor = PaneEditor::new();
     editor.set_row_count(3);
@@ -181,6 +207,66 @@ fn is_editing_multiline_row_is_false_when_multiline_row_selected_but_not_editing
     assert_eq!(editor.selected_row(), 0);
     assert_eq!(editor.editing_buffer(), None);
     assert!(!editor.is_editing_multiline_row());
+}
+
+#[test]
+fn set_input_on_fresh_editor_stores_value_without_editing() {
+    let mut editor = PaneEditor::new();
+
+    editor.set_input(2, "stored".to_string());
+
+    assert_eq!(editor.inputs().get(&2).map(String::as_str), Some("stored"));
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn set_input_does_not_start_editing_multiline_row() {
+    let mut editor = PaneEditor::new();
+    editor.set_multiline_rows(HashSet::from([1]));
+
+    editor.set_input(1, "stored".to_string());
+
+    assert_eq!(editor.inputs().get(&1).map(String::as_str), Some("stored"));
+    assert_eq!(editor.editing_buffer(), None);
+    assert!(!editor.is_editing_multiline_row());
+}
+
+#[test]
+fn set_input_overwrites_committed_value() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    editor.push_str("before");
+    editor.commit();
+
+    editor.set_input(0, "after".to_string());
+
+    assert_eq!(editor.inputs().get(&0).map(String::as_str), Some("after"));
+    assert_eq!(editor.editing_buffer(), None);
+}
+
+#[test]
+fn select_row_sets_selected_row_without_clamping() {
+    let mut editor = PaneEditor::new();
+
+    editor.select_row(5);
+
+    assert_eq!(editor.selected_row(), 5);
+}
+
+#[test]
+fn select_row_does_not_affect_editing_buffer_or_inputs() {
+    let mut editor = PaneEditor::new();
+    editor.set_row_count(1);
+    editor.start_editing();
+    editor.push_str("stored");
+    editor.commit();
+
+    editor.select_row(3);
+
+    assert_eq!(editor.selected_row(), 3);
+    assert_eq!(editor.inputs().get(&0).map(String::as_str), Some("stored"));
+    assert_eq!(editor.editing_buffer(), None);
 }
 
 #[test]
