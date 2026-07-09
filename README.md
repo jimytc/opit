@@ -71,6 +71,7 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 |-----------------|-------------------------------------------------------------------------|
 | `Tab`           | Cycle focus forward through panes (disabled while editing a field)     |
 | `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
+| `1`-`5`         | Jump focus directly to a pane: `1` Endpoints, `2` Auth Config, `3` Request Builder, `4` Curl Preview, `5` Response Viewer (disabled while editing a field or filtering, where digits are typed as literal input instead) |
 | `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config (auto-scrolls to keep the selection visible). In Curl Preview/Response Viewer: scroll the content up/down one line at a time |
 | `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
 | `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
@@ -82,10 +83,12 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 
 ### Panes
 
-The left column is a single full-height **Endpoints** pane; the right column stacks
-**Auth Config**, **Request Builder**, **Curl Preview**, and **Response Viewer** top to
-bottom — this is also the `Tab`/`Shift+Tab` focus order, wrapping from Response Viewer
-back to Endpoints.
+Three columns: the left column is a single full-height **Endpoints** pane; the middle
+column stacks **Auth Config** (top) and **Request Builder** (bottom) in a 2:3 height
+ratio; the right column stacks **Curl Preview** (top) and **Response Viewer** (bottom),
+also in a 2:3 height ratio. `Tab`/`Shift+Tab` cycle focus in that same order (Endpoints →
+Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping), and `1`-`5`
+jump directly to any of them.
 
 - **Endpoints** — list of operations from the loaded spec, grouped under a header row
   per first tag (or "Untagged" if an operation has none), in first-appearance order; the
