@@ -125,6 +125,7 @@ impl AppState {
     pub fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Tab | KeyCode::BackTab if !self.is_editing() => self.cycle_focus(key.code),
+            KeyCode::Char(digit @ '1'..='5') if !self.is_editing() => self.jump_to_pane(digit),
             _ => match self.focused {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
                 Pane::RequestBuilder => {
@@ -232,6 +233,17 @@ impl AppState {
             KeyCode::Char(c) => editor.push_char(c),
             _ => {}
         }
+    }
+
+    fn jump_to_pane(&mut self, digit: char) {
+        self.focused = match digit {
+            '1' => Pane::EndpointList,
+            '2' => Pane::AuthConfig,
+            '3' => Pane::RequestBuilder,
+            '4' => Pane::CurlPreview,
+            '5' => Pane::ResponseViewer,
+            _ => self.focused,
+        };
     }
 
     fn cycle_focus(&mut self, code: KeyCode) {
