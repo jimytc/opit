@@ -76,6 +76,8 @@ pub struct AppState {
     curl_preview_max_scroll: u16,
     response_viewer_scroll: u16,
     response_viewer_max_scroll: u16,
+    header_param_names: Vec<String>,
+    parameter_param_names: Vec<String>,
 }
 
 impl AppState {
@@ -97,7 +99,17 @@ impl AppState {
             curl_preview_max_scroll: 0,
             response_viewer_scroll: 0,
             response_viewer_max_scroll: 0,
+            header_param_names: Vec::new(),
+            parameter_param_names: Vec::new(),
         }
+    }
+
+    pub fn set_header_param_names(&mut self, names: Vec<String>) {
+        self.header_param_names = names;
+    }
+
+    pub fn set_parameter_param_names(&mut self, names: Vec<String>) {
+        self.parameter_param_names = names;
     }
 
     pub fn curl_preview_scroll(&self) -> u16 {
@@ -192,9 +204,27 @@ impl AppState {
             }
             _ => match self.focused {
                 Pane::EndpointList => self.handle_endpoint_list_key(key.code),
-                Pane::RequestBuilder => {
-                    Self::handle_editor_key(self.active_request_editor_mut(), key.code, key.modifiers)
-                }
+                Pane::RequestBuilder => match self.request_builder_tab {
+                    RequestBuilderTab::Header => Self::handle_addable_row_key(
+                        &mut self.request_builder.headers,
+                        &mut self.request_builder.custom_headers,
+                        &self.header_param_names,
+                        key.code,
+                        key.modifiers,
+                    ),
+                    RequestBuilderTab::Parameters => Self::handle_addable_row_key(
+                        &mut self.request_builder.parameters,
+                        &mut self.request_builder.custom_query_params,
+                        &self.parameter_param_names,
+                        key.code,
+                        key.modifiers,
+                    ),
+                    RequestBuilderTab::Payload => Self::handle_editor_key(
+                        &mut self.request_builder.payload,
+                        key.code,
+                        key.modifiers,
+                    ),
+                },
                 Pane::AuthConfig => {
                     Self::handle_editor_key(&mut self.auth_config, key.code, key.modifiers)
                 }
@@ -297,6 +327,39 @@ impl AppState {
             KeyCode::Char(c) => editor.push_char(c),
             _ => {}
         }
+    }
+
+    fn handle_addable_row_key(
+        editor: &mut PaneEditor,
+        custom: &mut Vec<String>,
+        existing_spec_names: &[String],
+        code: KeyCode,
+        modifiers: KeyModifiers,
+    ) {
+        let add_row_index = editor.row_count().saturating_sub(1);
+        let is_commit = (code == KeyCode::Enter && !editor.is_editing_multiline_row())
+            || (code == KeyCode::Char('s') && modifiers.contains(KeyModifiers::CONTROL));
+
+        if editor.selected_row() == add_row_index && is_commit && editor.editing_buffer().is_some()
+        {
+            if let Some(buffer) = editor.editing_buffer() {
+                if let Some((name, value)) = buffer.split_once('=') {
+                    let name = name.trim().to_string();
+                    let value = value.trim().to_string();
+                    let is_duplicate =
+                        custom.contains(&name) || existing_spec_names.contains(&name);
+                    if !name.is_empty() && !is_duplicate {
+                        custom.push(name);
+                        editor.set_input(add_row_index, value);
+                    }
+                }
+            }
+            editor.cancel();
+            editor.select_row(add_row_index + 1);
+            return;
+        }
+
+        Self::handle_editor_key(editor, code, modifiers);
     }
 
     fn jump_to_pane(&mut self, digit: char) {
