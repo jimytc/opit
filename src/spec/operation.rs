@@ -9,6 +9,22 @@ pub struct Operation {
     pub tags: Vec<String>,
 }
 
+impl Operation {
+    pub fn header_parameters(&self) -> Vec<&Parameter> {
+        self.parameters
+            .iter()
+            .filter(|parameter| parameter.location == "header")
+            .collect()
+    }
+
+    pub fn non_header_parameters(&self) -> Vec<&Parameter> {
+        self.parameters
+            .iter()
+            .filter(|parameter| parameter.location != "header")
+            .collect()
+    }
+}
+
 pub(super) fn request_body_media_type_from(operation: &openapiv3::Operation) -> Option<String> {
     operation
         .request_body
