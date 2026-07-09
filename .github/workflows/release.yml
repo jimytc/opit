@@ -25,15 +25,19 @@ jobs:
         run: cargo build --release
 
       - name: Package tarball
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          staging="opit-${{ github.ref_name }}-aarch64-apple-darwin"
+          staging="opit-${REF_NAME}-aarch64-apple-darwin"
           mkdir -p "$staging"
           cp target/release/opit "$staging/"
           cp README.md "$staging/"
           tar -czf "$staging.tar.gz" "$staging"
 
       - name: Package DMG
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           dmg_root="dmg-root"
@@ -41,7 +45,7 @@ jobs:
           cp target/release/opit "$dmg_root/"
           cp README.md "$dmg_root/"
           hdiutil create -volname "opit" -srcfolder "$dmg_root" -ov -format UDZO \
-            "opit-${{ github.ref_name }}-aarch64-apple-darwin.dmg"
+            "opit-${REF_NAME}-aarch64-apple-darwin.dmg"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -80,11 +84,14 @@ jobs:
         run: cross build --release --target ${{ matrix.target }}
 
       - name: Package tarball
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
-          staging="opit-${{ github.ref_name }}-${{ matrix.target }}"
+          staging="opit-${REF_NAME}-${TARGET}"
           mkdir -p "$staging"
-          cp "target/${{ matrix.target }}/release/opit" "$staging/"
+          cp "target/${TARGET}/release/opit" "$staging/"
           cp README.md "$staging/"
           tar -czf "$staging.tar.gz" "$staging"
 
@@ -112,11 +119,13 @@ jobs:
       - name: Build release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          curated="$(git tag -l --format='%(contents)' "${{ github.ref_name }}" | tail -n +2 | sed '/./,$!d')"
-          generated="$(gh api -X POST "repos/${{ github.repository }}/releases/generate-notes" \
-            -f tag_name="${{ github.ref_name }}" --jq .body)"
+          curated="$(git tag -l --format='%(contents)' "$REF_NAME" | tail -n +2 | sed '/./,$!d')"
+          generated="$(gh api -X POST "repos/$REPO/releases/generate-notes" \
+            -f tag_name="$REF_NAME" --jq .body)"
           {
             echo "$curated"
             echo
@@ -126,9 +135,11 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh release create "${{ github.ref_name }}" artifacts/* \
-            --repo "${{ github.repository }}" \
-            --title "${{ github.ref_name }}" \
+          gh release create "$REF_NAME" artifacts/* \
+            --repo "$REPO" \
+            --title "$REF_NAME" \
             --notes-file release-notes.md
