@@ -1,21 +1,23 @@
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{List, ListItem};
 
+use crate::app::RequestBuilderTab;
 use crate::spec::Operation;
 
 enum Row<'a> {
     Parameter(&'a crate::spec::Parameter),
-    Body {
-        example: Option<&'a str>,
-        committed: bool,
-    },
+    Custom { name: &'a str, location: &'a str },
+    Body { example: Option<&'a str>, committed: bool },
+    AddPlaceholder(&'static str),
 }
 
 impl Row<'_> {
     fn label(&self) -> &str {
         match self {
             Row::Parameter(parameter) => &parameter.name,
+            Row::Custom { name, .. } => name,
             Row::Body { .. } => "Body",
+            Row::AddPlaceholder(label) => label,
         }
     }
 
@@ -32,6 +34,7 @@ impl Row<'_> {
                     parameter.name, parameter.location, requiredness
                 )
             }
+            Row::Custom { name, location } => format!("{name} ({location}, custom)"),
             Row::Body {
                 example: Some(example),
                 committed: false,
@@ -40,12 +43,23 @@ impl Row<'_> {
                 format!("Body — e.g. {compact_example}")
             }
             Row::Body { .. } => "Body".to_string(),
+            Row::AddPlaceholder(label) => label.to_string(),
+        }
+    }
+
+    fn editing_display(&self, buffer: &str) -> String {
+        match self {
+            Row::AddPlaceholder(_) => format!("+ {buffer}"),
+            _ => format!("{}: {}", self.label(), buffer),
         }
     }
 }
 
 pub fn widget(
+    tab: RequestBuilderTab,
     operation: Option<&Operation>,
+    custom_headers: &[String],
+    custom_query_params: &[String],
     selected_row: usize,
     editing: Option<&str>,
     body_committed: bool,
@@ -54,17 +68,38 @@ pub fn widget(
         return List::new(vec![ListItem::new("No operation selected")]);
     };
 
-    let mut rows: Vec<Row> = operation.parameters.iter().map(Row::Parameter).collect();
-    if operation.has_request_body {
-        rows.push(Row::Body {
+    let rows: Vec<Row> = match tab {
+        RequestBuilderTab::Header => {
+            let mut rows: Vec<Row> = operation
+                .header_parameters()
+                .into_iter()
+                .map(Row::Parameter)
+                .collect();
+            rows.extend(custom_headers.iter().map(|name| Row::Custom {
+                name,
+                location: "header",
+            }));
+            rows.push(Row::AddPlaceholder("+ Add Header"));
+            rows
+        }
+        RequestBuilderTab::Parameters => {
+            let mut rows: Vec<Row> = operation
+                .non_header_parameters()
+                .into_iter()
+                .map(Row::Parameter)
+                .collect();
+            rows.extend(custom_query_params.iter().map(|name| Row::Custom {
+                name,
+                location: "query",
+            }));
+            rows.push(Row::AddPlaceholder("+ Add Parameter"));
+            rows
+        }
+        RequestBuilderTab::Payload => vec![Row::Body {
             example: operation.request_body_example.as_deref(),
             committed: body_committed,
-        });
-    }
-
-    if rows.is_empty() {
-        return List::new(vec![ListItem::new("No parameters")]);
-    }
+        }],
+    };
 
     let highlight_style = Style::default()
         .fg(Color::Green)
@@ -75,7 +110,7 @@ pub fn widget(
         .map(|(index, row)| {
             let text = if index == selected_row {
                 match editing {
-                    Some(buffer) => format!("{}: {}", row.label(), buffer),
+                    Some(buffer) => row.editing_display(buffer),
                     None => row.static_text(),
                 }
             } else {

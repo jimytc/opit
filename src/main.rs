@@ -358,19 +358,15 @@ fn draw(
     let request_builder_block = Block::bordered()
         .title("Request Builder")
         .border_style(pane_border_style(app.focused, Pane::RequestBuilder));
-    let body_committed = selected_operation
-        .map(|operation| {
-            app.request_builder
-                .headers
-                .inputs()
-                .contains_key(&operation.parameters.len())
-        })
-        .unwrap_or(false);
+    let body_committed = app.request_builder.payload.inputs().contains_key(&0);
     let mut request_builder_state = ListState::default();
     request_builder_state.select(Some(app.request_builder.headers.selected_row()));
     frame.render_stateful_widget(
         request_builder::widget(
+            app.request_builder_tab,
             selected_operation,
+            &app.request_builder.custom_headers,
+            &app.request_builder.custom_query_params,
             app.request_builder.headers.selected_row(),
             app.request_builder.headers.editing_buffer(),
             body_committed,
