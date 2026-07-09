@@ -3,9 +3,11 @@ use std::collections::HashSet;
 use clap::Parser;
 use crossterm::event::{
     self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEventKind,
+    KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    disable_raw_mode, enable_raw_mode, supports_keyboard_enhancement, EnterAlternateScreen,
+    LeaveAlternateScreen,
 };
 use crossterm::ExecutableCommand;
 use openapi_terminal_app::app::{AppState, Pane};
@@ -70,9 +72,15 @@ async fn run_app(
     credentials: &[Credential],
 ) -> anyhow::Result<()> {
     enable_raw_mode()?;
+    let keyboard_enhancement_supported = supports_keyboard_enhancement().unwrap_or(false);
     std::io::stdout()
         .execute(EnterAlternateScreen)?
         .execute(EnableBracketedPaste)?;
+    if keyboard_enhancement_supported {
+        std::io::stdout().execute(PushKeyboardEnhancementFlags(
+            KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES,
+        ))?;
+    }
     let mut terminal =
         ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
 
@@ -97,6 +105,9 @@ async fn run_app(
     .await;
 
     disable_raw_mode()?;
+    if keyboard_enhancement_supported {
+        std::io::stdout().execute(PopKeyboardEnhancementFlags)?;
+    }
     std::io::stdout()
         .execute(DisableBracketedPaste)?
         .execute(LeaveAlternateScreen)?;
@@ -410,7 +421,7 @@ fn draw(
     );
 }
 
-const HOTKEY_HINTS: &str = "Tab: cycle panes  1-5: jump to pane  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
+const HOTKEY_HINTS: &str = "Tab: cycle panes  Ctrl+Alt+1-5: jump to pane  ↑/↓: navigate/scroll  /: filter  s: server  Enter: edit/send  Ctrl+S: commit  Esc: cancel/quit  q: quit";
 
 fn pane_border_style(focused: Pane, pane: Pane) -> Style {
     if focused == pane {

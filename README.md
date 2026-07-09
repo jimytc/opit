@@ -71,7 +71,7 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 |-----------------|-------------------------------------------------------------------------|
 | `Tab`           | Cycle focus forward through panes (disabled while editing a field)     |
 | `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
-| `1`-`5`         | Jump focus directly to a pane: `1` Endpoints, `2` Auth Config, `3` Request Builder, `4` Curl Preview, `5` Response Viewer (disabled while editing a field or filtering, where digits are typed as literal input instead) |
+| `Ctrl+Alt+1`-`5` | Jump focus directly to a pane: `1` Endpoints, `2` Auth Config, `3` Request Builder, `4` Curl Preview, `5` Response Viewer (`Alt` is `Option` on macOS keyboards; disabled while editing a field or filtering) |
 | `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config (auto-scrolls to keep the selection visible). In Curl Preview/Response Viewer: scroll the content up/down one line at a time |
 | `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
 | `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
@@ -87,8 +87,8 @@ Three columns: the left column is a single full-height **Endpoints** pane; the m
 column stacks **Auth Config** (top) and **Request Builder** (bottom) in a 2:3 height
 ratio; the right column stacks **Curl Preview** (top) and **Response Viewer** (bottom),
 also in a 2:3 height ratio. `Tab`/`Shift+Tab` cycle focus in that same order (Endpoints →
-Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping), and `1`-`5`
-jump directly to any of them.
+Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping), and
+`Ctrl+Alt+1`-`5` jump directly to any of them.
 
 - **Endpoints** — list of operations from the loaded spec, grouped under a header row
   per first tag (or "Untagged" if an operation has none), in first-appearance order; the
@@ -129,6 +129,12 @@ are combined with any `--bearer-token`/`--header` CLI flags when sending.
 
 ## Known limitations
 
+- `Ctrl+Alt+1`-`5` (pane jump) relies on your terminal supporting the
+  [Kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) to
+  reliably disambiguate the modifier combination; opit enables it automatically when
+  supported. Terminals without support (and tmux sessions without `set -g extended-keys
+  always` in `tmux.conf`, forwarding a terminal that itself supports the protocol) may
+  not deliver some digits correctly — `Tab`/`Shift+Tab` cycling always works regardless.
 - OAuth2 flows other than `clientCredentials` (authorization code, implicit, password)
   and OpenID Connect discovery are not supported — those schemes are shown in Auth
   Config but marked "(not editable yet)".
