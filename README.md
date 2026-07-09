@@ -73,6 +73,7 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 | `Shift+Tab`     | Cycle focus backward through panes (disabled while editing a field)    |
 | `Ctrl+Alt+1`-`5` | Jump focus directly to a pane: `1` Endpoints, `2` Auth Config, `3` Request Builder, `4` Curl Preview, `5` Response Viewer (`Alt` is `Option` on macOS keyboards; disabled while editing a field or filtering) |
 | `Up` / `Down`   | Move selection: endpoint in Endpoints, row in Request Builder/Auth Config (auto-scrolls to keep the selection visible). In Curl Preview/Response Viewer: scroll the content up/down one line at a time |
+| `[` / `]`       | In Request Builder (not while editing): switch between the Header/Parameters/Payload sub-tabs, backward/forward with wraparound |
 | `s`             | In Endpoints (not while filtering): cycle the active server, when the spec declares more than one |
 | `/`             | In Endpoints: start typing a filter that narrows the endpoint list live |
 | `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing — except on the Body row (see below), where Enter inserts a newline instead |
@@ -106,14 +107,29 @@ Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping),
   (hinted in the row text) — OAuth2's token is fetched and cached automatically at
   send time. OpenID Connect and other OAuth2 flows are shown but marked
   "(not editable yet)" — see Known limitations
-- **Request Builder** — one row per parameter (path/query/header/cookie) for the selected
-  operation, plus a trailing "Body" row if the operation accepts a request body; select a
-  row and press `Enter` to type its value. Required parameters are labeled accordingly,
-  and sending is blocked with a message in Response Viewer if any are left empty. The
-  Body row shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
-  value for it. Unlike the other rows, the Body row supports multi-line editing: `Enter`
-  inserts a newline instead of committing, pasted text (including embedded newlines) is
-  inserted in one step, and `Ctrl+S` commits the value
+- **Request Builder** — three sub-tabs, switched with `[`/`]` (shown in the pane title as
+  e.g. `[Header] Parameters Payload`, with the active one bracketed):
+  - **Header** — one row per `header`-location parameter declared for the selected
+    operation, plus any custom headers you've added, plus a permanent `+ Add Header` row
+    at the bottom.
+  - **Parameters** — one row per `path`/`query`/`cookie`-location parameter, plus any
+    custom query parameters you've added, plus a permanent `+ Add Parameter` row.
+  - **Payload** — a single, always-present `Body` row — editable even when the spec
+    declares no `requestBody` for the operation, so you can send a body the spec doesn't
+    mention. Shows a generated example JSON hint (`Body — e.g. {...}`) until you commit a
+    value. Unlike other rows, it supports multi-line editing: `Enter` inserts a newline
+    instead of committing, pasted text (including embedded newlines) is inserted in one
+    step, and `Ctrl+S` commits the value.
+
+  Select any row and press `Enter` to type its value. Required parameters are labeled
+  accordingly, and sending is blocked with a message in Response Viewer if any are left
+  empty. To add a header or query parameter the spec doesn't declare: select the `+ Add`
+  row, press `Enter`, type `name=value` (e.g. `X-Api-Version=2` or `region=us-west`), and
+  commit with `Enter` or `Ctrl+S` — it becomes a real, re-editable row (labeled `custom`),
+  and a fresh `+ Add` row appears below it for adding another. Path parameters aren't
+  addable this way (they're fixed by the URL template). A malformed entry (no `=`, an
+  empty name, or a name that duplicates an existing row) is silently discarded rather than
+  added
 - **Curl Preview** — a read-only pane showing exactly what would be sent as a
   `curl`-equivalent command; it updates as you type, even before committing a field with
   `Enter`, reflecting in-progress edits in both Request Builder and Auth Config
@@ -122,10 +138,12 @@ Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping),
   lines soft-wrap within the pane instead of being cut off
 
 Switching the selected operation in Endpoints clears any in-progress Request Builder
-values (they're per-operation, tracked by method+path so a value never leaks onto the
-wrong operation even as filtering reshuffles the list); Auth Config values persist across
-operation switches (credentials are spec-wide). Credentials/params entered interactively
-are combined with any `--bearer-token`/`--header` CLI flags when sending.
+values, including custom headers/query parameters added via `+ Add` (they're per-operation,
+tracked by method+path so a value never leaks onto the wrong operation even as filtering
+reshuffles the list) — the active Request Builder sub-tab stays as you left it, though.
+Auth Config values persist across operation switches (credentials are spec-wide).
+Credentials/params entered interactively are combined with any `--bearer-token`/`--header`
+CLI flags when sending.
 
 ## Known limitations
 
@@ -148,6 +166,9 @@ are combined with any `--bearer-token`/`--header` CLI flags when sending.
 - Generated request body example hints only fill in properties declared inline in the
   schema; properties defined via `$ref` are skipped, and a request body whose own schema
   is a top-level `$ref` gets no example hint at all (no cross-schema resolution).
+- Custom headers/query parameters added via `+ Add` can't be removed once added (only
+  cleared entirely by switching to a different operation) — you can still edit their value
+  in place by pressing `Enter` on the row.
 
 ## Development
 
