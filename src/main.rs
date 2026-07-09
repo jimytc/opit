@@ -185,9 +185,17 @@ async fn event_loop<B: ratatui::backend::Backend>(
                             KeyCode::Char('q') | KeyCode::Esc => break,
                             KeyCode::Enter if app.focused == Pane::EndpointList => {
                                 if let Some(operation) = selected_operation {
-                                    let missing = request::missing_required_params(
+                                    let request_inputs = request::gather_request_inputs(
                                         operation,
                                         app.request_builder.headers.inputs(),
+                                        &std::collections::HashMap::new(),
+                                        &app.request_builder.custom_headers,
+                                        &[],
+                                        app.request_builder.payload.inputs(),
+                                    );
+                                    let missing = request::missing_required_params(
+                                        operation,
+                                        &request_inputs,
                                     );
                                     if !missing.is_empty() {
                                         app.set_response(request::HttpResponse {
@@ -203,7 +211,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
                                     let mut request = request::build_preview(
                                         base_url,
                                         operation,
-                                        app.request_builder.headers.inputs(),
+                                        &request_inputs,
                                         security_schemes,
                                         app.auth_config.inputs(),
                                         cli_credentials,
@@ -378,10 +386,18 @@ fn draw(
     let curl_preview_inner = curl_preview_block.inner(right[0]);
     frame.render_widget(curl_preview_block, right[0]);
     if let Some(operation) = selected_operation {
+        let preview_request_inputs = request::gather_request_inputs(
+            operation,
+            &app.request_builder.headers.inputs_with_live_edit(),
+            &std::collections::HashMap::new(),
+            &app.request_builder.custom_headers,
+            &[],
+            &app.request_builder.payload.inputs_with_live_edit(),
+        );
         let preview_request = request::build_preview(
             base_url,
             operation,
-            &app.request_builder.headers.inputs_with_live_edit(),
+            &preview_request_inputs,
             security_schemes,
             &app.auth_config.inputs_with_live_edit(),
             cli_credentials,

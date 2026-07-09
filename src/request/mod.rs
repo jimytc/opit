@@ -14,17 +14,73 @@ pub struct HttpRequest {
     pub body: Option<String>,
 }
 
-pub fn build(
-    base_url: &str,
+pub struct RequestInputs {
+    pub param_values: HashMap<String, String>,
+    pub extra_headers: Vec<(String, String)>,
+    pub extra_query: Vec<(String, String)>,
+    pub body: Option<String>,
+}
+
+pub fn gather_request_inputs(
     operation: &Operation,
-    param_values: &HashMap<String, String>,
-) -> HttpRequest {
+    header_inputs: &HashMap<usize, String>,
+    parameter_inputs: &HashMap<usize, String>,
+    custom_headers: &[String],
+    custom_query_params: &[String],
+    payload_inputs: &HashMap<usize, String>,
+) -> RequestInputs {
+    let header_parameters = operation.header_parameters();
+    let non_header_parameters = operation.non_header_parameters();
+
+    let mut param_values = HashMap::new();
+    for (index, parameter) in header_parameters.iter().enumerate() {
+        if let Some(value) = header_inputs.get(&index) {
+            param_values.insert(parameter.name.clone(), value.clone());
+        }
+    }
+    for (index, parameter) in non_header_parameters.iter().enumerate() {
+        if let Some(value) = parameter_inputs.get(&index) {
+            param_values.insert(parameter.name.clone(), value.clone());
+        }
+    }
+
+    let extra_headers = custom_headers
+        .iter()
+        .enumerate()
+        .filter_map(|(index, name)| {
+            header_inputs
+                .get(&(header_parameters.len() + index))
+                .map(|value| (name.clone(), value.clone()))
+        })
+        .collect();
+
+    let extra_query = custom_query_params
+        .iter()
+        .enumerate()
+        .filter_map(|(index, name)| {
+            parameter_inputs
+                .get(&(non_header_parameters.len() + index))
+                .map(|value| (name.clone(), value.clone()))
+        })
+        .collect();
+
+    let body = payload_inputs.get(&0).cloned();
+
+    RequestInputs {
+        param_values,
+        extra_headers,
+        extra_query,
+        body,
+    }
+}
+
+pub fn build(base_url: &str, operation: &Operation, inputs: &RequestInputs) -> HttpRequest {
     let mut path = operation.path.clone();
     let mut query_pairs = Vec::new();
     let mut headers = Vec::new();
 
     for parameter in &operation.parameters {
-        let Some(value) = param_values.get(&parameter.name) else {
+        let Some(value) = inputs.param_values.get(&parameter.name) else {
             continue;
         };
         match parameter.location.as_str() {
@@ -42,6 +98,13 @@ pub fn build(
             }
             _ => {}
         }
+    }
+
+    for (name, value) in &inputs.extra_headers {
+        headers.push((name.clone(), value.clone()));
+    }
+    for (name, value) in &inputs.extra_query {
+        query_pairs.push(format!("{name}={value}"));
     }
 
     let mut url = format!("{base_url}{path}");
@@ -71,47 +134,21 @@ pub fn append_query_param(url: &mut String, name: &str, value: &str) {
     url.push_str(&format!("{name}={value}"));
 }
 
-pub fn param_values_from_inputs(
-    operation: &Operation,
-    inputs: &HashMap<usize, String>,
-) -> HashMap<String, String> {
+pub fn missing_required_params(operation: &Operation, inputs: &RequestInputs) -> Vec<String> {
     operation
         .parameters
         .iter()
-        .enumerate()
-        .filter_map(|(index, parameter)| {
-            inputs
-                .get(&index)
-                .map(|value| (parameter.name.clone(), value.clone()))
-        })
-        .collect()
-}
-
-pub fn missing_required_params(
-    operation: &Operation,
-    inputs: &HashMap<usize, String>,
-) -> Vec<String> {
-    operation
-        .parameters
-        .iter()
-        .enumerate()
-        .filter(|(index, parameter)| {
+        .filter(|parameter| {
             parameter.required
                 && inputs
-                    .get(index)
+                    .param_values
+                    .get(&parameter.name)
                     .map(String::as_str)
                     .unwrap_or("")
                     .is_empty()
         })
-        .map(|(_, parameter)| parameter.name.clone())
+        .map(|parameter| parameter.name.clone())
         .collect()
-}
-
-pub fn body_from_inputs(operation: &Operation, inputs: &HashMap<usize, String>) -> Option<String> {
-    if !operation.has_request_body {
-        return None;
-    }
-    inputs.get(&operation.parameters.len()).cloned()
 }
 
 pub fn pretty_print_if_json(body: &str) -> String {
@@ -124,15 +161,14 @@ pub fn pretty_print_if_json(body: &str) -> String {
 pub fn build_preview(
     base_url: &str,
     operation: &Operation,
-    param_inputs: &HashMap<usize, String>,
+    inputs: &RequestInputs,
     security_schemes: &[SecurityScheme],
     auth_inputs: &HashMap<usize, String>,
     cli_credentials: &[Credential],
 ) -> HttpRequest {
-    let param_values = param_values_from_inputs(operation, param_inputs);
-    let mut request = build(base_url, operation, &param_values);
-    if let Some(body) = body_from_inputs(operation, param_inputs) {
-        request.body = Some(body);
+    let mut request = build(base_url, operation, inputs);
+    if let Some(body) = &inputs.body {
+        request.body = Some(body.clone());
         if let Some(media_type) = &operation.request_body_media_type {
             request
                 .headers
