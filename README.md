@@ -79,7 +79,8 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 | `Enter`         | In Endpoints: send the selected operation as a live HTTP request, or (while filtering) keep the current filter text and stop typing. In Request Builder/Auth Config: start editing the selected row, or commit the in-progress value if already editing — except on the Body row (see below), where Enter inserts a newline instead |
 | `Ctrl+S`        | While editing any Request Builder/Auth Config row, commit the in-progress value (the only way to commit the Body row, since Enter there inserts a newline) |
 | `Esc`           | Cancel an in-progress edit, or (while filtering) clear the filter and stop typing — otherwise quit |
-| Any character / `Backspace` / paste | While editing a row or typing a filter, types into / erases from / pastes into that value. Paste is inserted as a whole chunk, embedded newlines included |
+| Any character / `Backspace` | While editing a row or typing a filter, types into / erases from that value |
+| Paste | While editing a Request Builder/Auth Config row, inserts the pasted text as a whole chunk, embedded newlines included. Has no effect while typing an Endpoints filter or elsewhere |
 | `q`             | Quit (only when not currently editing a field or filtering)           |
 
 ### Panes
@@ -87,7 +88,18 @@ opit spec.json --header "X-API-Key=secret123" --header "X-Custom=value"
 Three columns: the left column is a single full-height **Endpoints** pane; the middle
 column stacks **Auth Config** (top) and **Request Builder** (bottom) in a 2:3 height
 ratio; the right column stacks **Curl Preview** (top) and **Response Viewer** (bottom),
-also in a 2:3 height ratio. `Tab`/`Shift+Tab` cycle focus in that same order (Endpoints →
+also in a 2:3 height ratio:
+
+```text
+┌─Endpoints──────┬─Auth Config────┬─Curl Preview───┐
+│                │ (2)             │ (2)             │
+│                ├─Request Builder┼─Response Viewer─┤
+│ (5, full)      │ (3)             │ (3)             │
+│                │                 │                 │
+└────────────────┴─────────────────┴─────────────────┘
+```
+
+`Tab`/`Shift+Tab` cycle focus in that same order (Endpoints →
 Auth Config → Request Builder → Curl Preview → Response Viewer, wrapping), and
 `Ctrl+Alt+1`-`5` jump directly to any of them.
 
@@ -176,13 +188,26 @@ This project follows strict TDD: tests live under `tests/` as integration tests,
 per concern; production code lives under `src/`.
 
 ```bash
+cargo build
 cargo test
+cargo run -- examples/minimal.yaml   # a bundled sample spec, no external API needed
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the codebase is put together
-(C4 diagrams, sequence/state diagrams, module responsibilities, and the non-obvious
-design decisions behind the Request Builder tabs and OAuth2 handling) — start there
-before making non-trivial changes.
+New to the codebase? Start with [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) — a
+guided first hour that runs the app, tours every pane, and walks through one trivial
+change end to end. Then:
+
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — definitions for domain/state terms used
+  throughout the docs and code (`Pane`, `PaneEditor`, `RequestBuilderTab`, `Operation`,
+  `RequestInputs`, ...). Skim this before Architecture; it assumes these terms.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the codebase is put together
+  (C4 diagrams, sequence/state diagrams, module responsibilities, and the non-obvious
+  design decisions behind the Request Builder tabs and OAuth2 handling). Read this
+  before making non-trivial changes.
+- [`docs/TESTING.md`](docs/TESTING.md) — which test file covers which `src/` module, how
+  to write a new test, and the manual-verification checklist for UI-visible changes.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — setup, the day-to-day TDD workflow, and the PR
+  checklist.
 
 ## Cross-compiling for Linux
 
@@ -211,15 +236,25 @@ Debian 12). If you need binaries that run on any Linux regardless of glibc versi
 
 ## Releasing
 
-Create the tag with an annotated message summarizing what's new (`git tag -a vX.Y.Z -m "..."`)
-— this becomes the release's notes, so write real content, not just the version number.
+Create the tag with a **multi-line** annotated message: a subject line (used only as the
+tag's own label, not shown in the release notes), then a blank line, then the real
+content — `.github/workflows/release.yml` strips the first line before using the rest,
+so a single-line `-m "..."` produces empty curated notes:
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z
+
+- Real, human-readable summary of what changed goes here.
+- One bullet per notable change."
+```
+
 Pushing the tag triggers `.github/workflows/release.yml`, which builds and publishes a
 GitHub Release with:
 - `opit-vX.Y.Z-aarch64-apple-darwin.tar.gz` and `.dmg` (macOS)
 - `opit-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` and `opit-vX.Y.Z-aarch64-unknown-linux-gnu.tar.gz` (Linux)
 
-The release's notes combine the tag's annotated message with GitHub's auto-generated
-"Full Changelog" compare link appended below it.
+The release's notes combine everything after the tag message's first line with GitHub's
+auto-generated "Full Changelog" compare link appended below it.
 
 After a release, update the Homebrew tap
 ([jimytc/homebrew-opit](https://github.com/jimytc/homebrew-opit)) — see that repo's

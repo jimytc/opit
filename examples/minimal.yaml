@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Mini Pet Store
+  version: "1.0.0"
+  description: >
+    A deliberately small OpenAPI document for exploring opit locally. It touches
+    every corner of the UI: two tags, a path param, a query param, a header
+    param, a request body, and two auth schemes (Bearer + OAuth2 client
+    credentials) — see docs/GETTING_STARTED.md for a guided tour.
+servers:
+  - url: https://api.example.com/v1
+tags:
+  - name: pets
+  - name: orders
+paths:
+  /pets:
+    get:
+      tags: [pets]
+      summary: List pets
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          description: Max number of pets to return
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A page of pets
+    post:
+      tags: [pets]
+      summary: Create a pet
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tag:
+                  type: string
+      responses:
+        "201":
+          description: Created
+  /pets/{petId}:
+    get:
+      tags: [pets]
+      summary: Get a pet by id
+      operationId: getPet
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Request-Id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The pet
+        "404":
+          description: Not found
+  /orders:
+    post:
+      tags: [orders]
+      summary: Place an order
+      operationId: placeOrder
+      security:
+        - oauth2ClientCreds: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                petId:
+                  type: string
+                quantity:
+                  type: integer
+      responses:
+        "201":
+          description: Order placed
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    oauth2ClientCreds:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth2/token
+          scopes: {}

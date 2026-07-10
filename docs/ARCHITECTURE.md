@@ -6,6 +6,13 @@ partner) who need to understand how the system fits together before making chang
 boundary, a data flow, or an invariant described here — an architecture doc that drifts
 from the code is worse than none.
 
+**New here?** This document assumes you've already run the app once and know the terms
+in [`GLOSSARY.md`](GLOSSARY.md). If you haven't, do
+[`GETTING_STARTED.md`](GETTING_STARTED.md) first (~1 hour), then come back. For the
+day-to-day workflow (TDD loop, PR checklist) see [`../CONTRIBUTING.md`](../CONTRIBUTING.md)
+instead — this document is about *how the system is shaped*, not *how to send a PR*. In a
+hurry to make a specific kind of change right now? Jump to [§8](#8-where-to-add-things).
+
 ## 1. What opit is, in one paragraph
 
 opit is a single-binary Rust terminal application (TUI) for browsing an OpenAPI 3.0
@@ -143,6 +150,26 @@ flowchart TB
     style main fill:#1f6feb,color:#fff
 ```
 
+ASCII version of the same dependency graph, for a quick scan without a Mermaid
+renderer — `main.rs` depends on all six modules below; here's how those six depend on
+each other:
+
+```text
+   cli      (no dependencies on other lib modules)
+
+   spec     (no dependencies on other lib modules — the leaf everything else builds on)
+
+   app      -> request              (only for the HttpResponse type; app does NOT
+                                      depend on spec, despite rendering spec-shaped data)
+
+   ui       -> spec, app            (turns spec data + app's state into ratatui widgets)
+
+   request  -> spec, auth           (builds an HttpRequest from a spec::Operation;
+                                      auth::apply() mutates it with credentials)
+
+   auth     -> request              (Credential::apply() takes an &mut HttpRequest)
+```
+
 Responsibilities, one line each:
 
 | Module | Owns | Does NOT own |
@@ -229,6 +256,24 @@ classDiagram
     RequestBuilderState "1" *-- "3" PaneEditor : headers / parameters / payload
 ```
 
+ASCII version of the same ownership tree — the shape to keep in your head is "one
+`AppState`, four `PaneEditor`s total, each independent":
+
+```text
+AppState
+├─ focused: Pane                          (EndpointList/AuthConfig/RequestBuilder/
+│                                           CurlPreview/ResponseViewer)
+├─ selected_operation_index, selected_server_index, endpoint_filter
+├─ auth_config: PaneEditor                (1 editor — Auth Config pane)
+└─ request_builder: RequestBuilderState
+   ├─ request_builder_tab: RequestBuilderTab   (Header/Parameters/Payload)
+   ├─ headers: PaneEditor                 (1 editor — Header sub-tab)
+   ├─ parameters: PaneEditor              (1 editor — Parameters sub-tab)
+   ├─ payload: PaneEditor                 (1 editor — Payload sub-tab, always 1 row)
+   ├─ custom_headers: Vec<String>         (names added via "+ Add Header")
+   └─ custom_query_params: Vec<String>    (names added via "+ Add Parameter")
+```
+
 Why three `PaneEditor`s instead of one? Each Request Builder tab (Header, Parameters,
 Payload) is genuinely its own independent list from the user's point of view — its own
 cursor, its own in-progress edit, its own committed values — and `PaneEditor` is
@@ -305,34 +350,44 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User
+    participant Main as main.rs event_loop
     participant App as AppState
     participant Req as request module
     participant Auth as auth::oauth2
     participant Client as HttpClient (ReqwestClient)
     participant API as Target API
 
-    User->>App: Enter (focused == EndpointList, not editing)
-    App->>Req: gather_request_inputs(op, headers.inputs(), parameters.inputs(),<br/>custom_headers, custom_query_params, payload.inputs())
-    Req-->>App: RequestInputs
-    App->>Req: missing_required_params(op, &inputs)
+    User->>Main: Enter (focused == EndpointList, not editing)
+    Main->>Req: gather_request_inputs(op, headers.inputs(), parameters.inputs(),<br/>custom_headers, custom_query_params, payload.inputs())
+    Req-->>Main: RequestInputs
+    Main->>Req: missing_required_params(op, &inputs)
     alt any required param missing/empty
-        Req-->>App: Vec<String> (non-empty)
-        App->>App: set_response(status:0, "Missing required parameter(s): ...")
-        Note over App: request is NOT sent
+        Req-->>Main: Vec<String> (non-empty)
+        Main->>App: set_response(status:0, "Missing required parameter(s): ...")
+        Note over Main: request is NOT sent
     else all required params present
-        App->>Req: build_preview(base_url, op, &inputs, schemes, auth_inputs, cli_creds)
-        Req-->>App: HttpRequest (path/query/header/cookie + body + Content-Type +<br/>CLI/interactive credentials already applied)
-        App->>Auth: resolve_oauth2_credentials(schemes, auth_inputs, token_caches, http, clock)
+        Main->>Req: build_preview(base_url, op, &inputs, schemes, auth_inputs, cli_creds)
+        Req-->>Main: HttpRequest (path/query/header/cookie + body + Content-Type +<br/>CLI/interactive credentials already applied)
+        Main->>Auth: resolve_oauth2_credentials(schemes, auth_inputs, token_caches, http, clock)
         Note over Auth: only contacts the token endpoint for clientCredentials<br/>schemes with a filled-in client_id:client_secret row;<br/>reuses a cached token if still valid (30s expiry skew)
-        Auth-->>App: Vec<Credential> (Bearer tokens)
-        App->>App: auth::apply() each credential onto the request
-        App->>Client: http_client.send(request)
+        Auth-->>Main: Vec<Credential> (Bearer tokens)
+        Main->>Main: auth::apply() each credential onto the request
+        Main->>Client: http_client.send(request)
         Client->>API: real HTTP call (reqwest)
         API-->>Client: response
-        Client-->>App: HttpResponse (or HttpError)
-        App->>App: set_response(...)
+        Client-->>Main: HttpResponse (or HttpError)
+        Main->>App: set_response(...)
     end
 ```
+
+Note: this is the one interaction in the app where `main.rs` itself holds real
+orchestration logic (gathering inputs, checking required params, resolving auth,
+sending) rather than delegating to `AppState` — `AppState` here is only the state sink
+(`set_response`), not the actor. This is the exception to the "no non-trivial `if` in
+`main.rs`" guideline in the module table above, and it's deliberate: the async
+`await` on the HTTP call has to happen somewhere with access to the `tokio` runtime,
+and `AppState` is intentionally kept free of `reqwest`/async so it stays trivially
+unit-testable (see §6).
 
 ### 3.4 Adding a custom header/query parameter (the "+ Add" row)
 
@@ -436,7 +491,7 @@ flowchart LR
     subgraph releaseJobs["release.yml jobs"]
         macBuild["Build macOS (aarch64)<br/>-> .tar.gz + .dmg"]
         linuxBuild["Cross-compile Linux<br/>(x86_64 + aarch64 via `cross`)<br/>-> .tar.gz each"]
-        publish["Publish GitHub Release<br/>(notes = tag message +<br/>auto-generated changelog link)"]
+        publish["Publish GitHub Release<br/>(notes = tag message minus its<br/>first line + auto-generated<br/>changelog link — see README's<br/>Releasing section)"]
     end
 
     ghRelease[("GitHub Release<br/>+ 4 binary assets")]
@@ -465,10 +520,13 @@ truth for behavior, more so than this document. A few load-bearing conventions:
   also touches `src/`; a commit that makes it pass never also touches `tests/`. `git log`
   reads as an alternating `test: ...` / `feat: ...` / `fix: ...` sequence — that's
   intentional, not incidental.
-- **Test-writing is delegated to Codex CLI** (`codex exec`), prompted with precise
-  behavioral specs (never vague asks). Claude reviews the resulting tests for
-  correctness/scope before treating them as the RED step, then writes only the `src/`
-  change needed to turn them green.
+- **Test-writing is often delegated to Codex CLI** (`codex exec`) by this project's
+  maintainers, prompted with precise behavioral specs (never vague asks); the resulting
+  test is reviewed for correctness/scope before being treated as the RED step, and only
+  the `src/` change needed to turn it green is written by hand. **This is a maintainer
+  workflow choice, not a requirement for contributors** — see
+  [`../CONTRIBUTING.md §2`](../CONTRIBUTING.md#2-day-to-day-workflow) for what's actually
+  required of a PR (the red/green commit split, not who or what authored the test).
 - **`ui::*` widgets are tested by rendering into a `ratatui::buffer::Buffer` and
   asserting on cell text/style** — no terminal, no snapshot files. See
   `tests/ui_request_builder.rs` for the density of coverage this enables (tab-specific
@@ -578,5 +636,12 @@ always works. See the README's Known Limitations for user-facing detail.
 
 - `README.md` — end-user install/usage/keybindings documentation, and the release
   process.
+- `GETTING_STARTED.md` — guided first hour for a new contributor: build, run against
+  `examples/minimal.yaml`, tour every pane, one trivial TDD change end to end.
+- `GLOSSARY.md` — definitions for the domain/state terms used throughout this document.
+- `TESTING.md` — module → test file map, how to write a new test, manual-verification
+  checklist.
+- `../CONTRIBUTING.md` — setup, the day-to-day TDD workflow, commit conventions, PR
+  checklist.
 - `tests/` — the actual behavioral specification; when in doubt about "is this a bug or
   a feature," the tests are more authoritative than this document.
